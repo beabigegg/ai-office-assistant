@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "pptx": {
+      "command": "python",
+      "args": ["${PROJECT_ROOT}/shared/tools/mcp_pptx_server.py"]
+    },
+    "xlsx": {
+      "command": "python",
+      "args": ["${PROJECT_ROOT}/shared/tools/mcp_xlsx_server.py"]
+    },
+    "docx": {
+      "command": "python",
+      "args": ["${PROJECT_ROOT}/shared/tools/mcp_docx_server.py"]
+    }
+  }
+}

@@ -1,0 +1,104 @@
+# ============================================================
+# AI Office Assistant - .gitignore
+# 原則：追蹤「框架」，忽略「資料與機密」
+# ============================================================
+
+# === 機密 ===
+.env
+.env.local
+.env.*.local
+MASTER_API_KEY.txt
+.mcp.json
+
+# === 資料庫 ===
+*.db
+*.sqlite
+*.sqlite3
+*.db.bak*
+*.db-journal
+*.db-wal
+*.db-shm
+
+# === 大型 / 二進位資料檔 ===
+*.xlsx
+*.xls
+*.csv
+*.pdf
+*.pptx
+*.docx
+
+# === 專案資料（只追蹤 _template）===
+projects/*/
+!projects/_template/
+
+# === 共用知識庫（公司專屬知識）===
+shared/kb/decisions.md
+shared/kb/active_rules_summary.md
+shared/kb/_index.md
+shared/kb/architecture_overview.md
+shared/kb/error_patterns.md
+shared/kb/evolution_log.md
+shared/kb/tool_registry.md
+shared/kb/file_registry.json
+shared/kb/*.md
+shared/kb/dynamic/
+shared/kb/external/
+shared/kb/memory/
+shared/kb/knowledge_graph/
+shared/kb/ops_log/
+
+# === Skills 內容（公司專屬領域知識）===
+# 忽略所有 skill 子目錄內容
+.claude/skills/*/
+# 但保留 _skill_template 範本
+!.claude/skills/_skill_template/
+!.claude/skills/.gitkeep
+
+# === Skills-on-demand 內容 ===
+.claude/skills-on-demand/*/
+!.claude/skills-on-demand/.gitkeep
+
+# === Claude Code 個人設定 ===
+.claude/agent-memory/
+.claude/settings.local.json
+.claude/CLAUDE.v2.7.backup.md
+
+# === Python artifacts ===
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+*.egg
+
+# === Conda / venv ===
+.conda/
+.venv/
+venv/
+env/
+requirements-lock.txt
+
+# === IDE ===
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# === OS ===
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# === Playwright MCP cache ===
+.playwright-mcp/
+
+# === Backup / Temp ===
+*.backup
+*.bak
+*.tmp
+*.temp
+
+# === 根目錄散落檔案 ===
+parse_db_pa004.py

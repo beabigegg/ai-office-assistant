@@ -1,0 +1,48 @@
+{
+  "name": "analysis_report",
+  "description": "Analysis and report generation workflow. Query → validate → generate → record.",
+  "nodes": [
+    {
+      "id": "query_db",
+      "description": "Execute analysis queries against SQLite database",
+      "depends_on": [],
+      "required": true,
+      "required_outputs": [],
+      "validator": null,
+      "validator_params": {}
+    },
+    {
+      "id": "cross_validate",
+      "description": "Cross-validate query results against domain rules. Leader applies BOM/process/reliability rules directly using Skills and Decisions knowledge.",
+      "depends_on": ["query_db"],
+      "required": true,
+      "required_outputs": [],
+      "validator": null,
+      "validator_params": {}
+    },
+    {
+      "id": "generate_report",
+      "description": "Generate output report (Excel/Word/PPT) to vault/outputs/",
+      "depends_on": ["cross_validate"],
+      "required": true,
+      "required_outputs": [
+        {"path_contains": "vault/outputs/", "description": "report written to vault/outputs/"}
+      ],
+      "delegate_to": "report-builder",
+      "delegate_hint": "Use report-builder agent for Office document generation (Excel/Word/PPT via MCP tools)",
+      "validator": null,
+      "validator_params": {}
+    },
+    {
+      "id": "record_output_path",
+      "description": "Record report output path in project_state.md",
+      "depends_on": ["generate_report"],
+      "required": true,
+      "required_outputs": [
+        {"path_contains": "project_state.md", "description": "output path recorded"}
+      ],
+      "validator": null,
+      "validator_params": {}
+    }
+  ]
+}

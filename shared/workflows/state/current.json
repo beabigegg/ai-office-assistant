@@ -1,0 +1,541 @@
+{
+  "active": {},
+  "counters": {
+    "session_start": 21,
+    "post_task": 29
+  },
+  "history": [
+    {
+      "id": "session_start_20260318_062446",
+      "workflow": "session_start",
+      "context": {
+        "project": "projects/process-analysis"
+      },
+      "started_at": "2026-03-18T06:24:46.218555+00:00",
+      "completed_at": "2026-03-18T06:25:09.245520+00:00",
+      "node_count": 6
+    },
+    {
+      "id": "post_task_20260318_055455",
+      "workflow": "post_task",
+      "context": {
+        "project": "projects/process-analysis/",
+        "task": "1920 full pipeline: embedding + entity extraction + KG rebuild"
+      },
+      "started_at": "2026-03-18T05:54:55.982099+00:00",
+      "completed_at": "2026-03-18T05:56:31.607098+00:00",
+      "node_count": 5
+    },
+    {
+      "id": "session_start_20260318_021554",
+      "workflow": "session_start",
+      "context": {
+        "project": "projects/process-analysis/"
+      },
+      "started_at": "2026-03-18T02:15:54.999215+00:00",
+      "completed_at": "2026-03-18T02:16:50.571264+00:00",
+      "node_count": 6
+    },
+    {
+      "id": "post_task_20260318_002859",
+      "workflow": "post_task",
+      "context": {
+        "project": "projects/process-analysis/",
+        "task": "1920 station data ingestion (FMEA+CP+OI)"
+      },
+      "started_at": "2026-03-18T00:28:59.511836+00:00",
+      "completed_at": "2026-03-18T00:30:27.697113+00:00",
+      "node_count": 5
+    },
+    {
+      "id": "session_start_20260318_001652",
+      "workflow": "session_start",
+      "context": {
+        "project": "projects/process-analysis/"
+      },
+      "started_at": "2026-03-18T00:16:52.881867+00:00",
+      "completed_at": "2026-03-18T00:17:37.588285+00:00",
+      "node_count": 6
+    },
+    {
+      "id": "post_task_20260312_104400",
+      "workflow": "post_task",
+      "context": {
+        "project": "projects/ecr-ecn",
+        "task": "極限壓縮分組報告 v1 產出（23 groups，排除 130P/EL2K）"
+      },
+      "started_at": "2026-03-12T10:44:00.678006+00:00",
+      "completed_at": "2026-03-12T10:44:50.152191+00:00",
+      "node_count": 5
+    },
+    {
+      "id": "session_start_20260312_051526",
+      "workflow": "session_start",
+      "context": {
+        "project": "projects/ecr-ecn"
+      },
+      "started_at": "2026-03-12T05:15:26.694557+00:00",
+      "completed_at": "2026-03-12T05:15:34.761838+00:00",
+      "node_count": 6
+    },
+    {
+      "id": "session_start_20260312_051053",
+      "workflow": "session_start",
+      "context": {
+        "project": "projects/ecr-ecn"
+      },
+      "started_at": "2026-03-12T05:10:53.288327+00:00",
+      "completed_at": "2026-03-12T05:11:03.625004+00:00",
+      "node_count": 6
+    },
+    {
+      "id": "session_start_20260311_075308",
+      "workflow": "session_start",
+      "context": {
+        "project": "projects/ecr-ecn/"
+      },
+      "started_at": "2026-03-11T07:53:08.601225+00:00",
+      "completed_at": "2026-03-11T07:53:29.716004+00:00",
+      "node_count": 6
+    },
+    {
+      "id": "post_task_20260311_014938",
+      "workflow": "post_task",
+      "context": {
+        "project": "projects/ecr-ecn/",
+        "task": "v6 report: integrate CSR by-type + shipment data"
+      },
+      "started_at": "2026-03-11T01:49:38.761062+00:00",
+      "completed_at": "2026-03-11T01:53:51.778016+00:00",
+      "node_count": 5
+    },
+    {
+      "id": "session_start_20260311_001801",
+      "workflow": "session_start",
+      "context": {
+        "project": "projects/ecr-ecn/"
+      },
+      "started_at": "2026-03-11T00:18:01.347377+00:00",
+      "completed_at": "2026-03-11T00:18:33.215402+00:00",
+      "node_count": 6
+    },
+    {
+      "id": "post_task_20260310_015207",
+      "workflow": "post_task",
+      "context": {
+        "project": "projects/ecr-ecn",
+        "task": "O-0004 by LEF report generation"
+      },
+      "started_at": "2026-03-10T01:52:07.264510+00:00",
+      "completed_at": "2026-03-10T01:53:24.247575+00:00",
+      "node_count": 5
+    },
+    {
+      "id": "session_start_20260310_012154",
+      "workflow": "session_start",
+      "context": {
+        "project": "projects/ecr-ecn"
+      },
+      "started_at": "2026-03-10T01:21:54.017015+00:00",
+      "completed_at": "2026-03-10T01:22:19.720867+00:00",
+      "node_count": 6
+    },
+    {
+      "id": "post_task_20260309_051327",
+      "workflow": "post_task",
+      "context": {
+        "project": "projects/ecr-ecn/",
+        "task": "修正報告Step1描述-移除81內部訂單排除(僅用於出貨分析)"
+      },
+      "started_at": "2026-03-09T05:13:27.842654+00:00",
+      "completed_at": "2026-03-09T05:13:57.822514+00:00",
+      "node_count": 5
+    },
+    {
+      "id": "session_start_20260309_050639",
+      "workflow": "session_start",
+      "context": {
+        "project": "projects/ecr-ecn/"
+      },
+      "started_at": "2026-03-09T05:06:39.636696+00:00",
+      "completed_at": "2026-03-09T05:06:59.720382+00:00",
+      "node_count": 6
+    },
+    {
+      "id": "post_task_20260309_020506",
+      "workflow": "post_task",
+      "context": {
+        "project": "projects/ecr-ecn",
+        "task": "Summary sheet enhanced with methodology + flow + cross-change matrix; QV shared note refined to Max/Min/Both"
+      },
+      "started_at": "2026-03-09T02:05:06.088327+00:00",
+      "completed_at": "2026-03-09T02:07:42.234987+00:00",
+      "node_count": 5
+    },
+    {
+      "id": "post_task_20260309_011958",
+      "workflow": "post_task",
+      "context": {
+        "project": "projects/ecr-ecn",
+        "task": "Fix QV min_die selection bug - change_parts only stored max diag per part"
+      },
+      "started_at": "2026-03-09T01:19:58.286223+00:00",
+      "completed_at": "2026-03-09T01:21:08.874904+00:00",
+      "node_count": 5
+    },
+    {
+      "id": "session_start_20260309_004431",
+      "workflow": "session_start",
+      "context": {
+        "project": "projects/ecr-ecn"
+      },
+      "started_at": "2026-03-09T00:44:31.732391+00:00",
+      "completed_at": "2026-03-09T00:44:47.392923+00:00",
+      "node_count": 6
+    },
+    {
+      "id": "post_task_20260308_232117",
+      "workflow": "post_task",
+      "context": {
+        "project": "projects/ecr-ecn",
+        "task": "v5 Report AllParts展開 + Cross-BOP WAF fallback + Die-size WAF展開"
+      },
+      "started_at": "2026-03-08T23:21:17.250437+00:00",
+      "completed_at": "2026-03-08T23:22:19.844683+00:00",
+      "node_count": 5
+    },
+    {
+      "id": "post_task_20260306_090151",
+      "workflow": "post_task",
+      "context": {
+        "project": "projects/ecr-ecn",
+        "task": "rebuild unified family pipeline: desc-based Wire/LF, BOM fallback, per-change QV"
+      },
+      "started_at": "2026-03-06T09:01:51.417934+00:00",
+      "completed_at": "2026-03-06T09:05:12.345041+00:00",
+      "node_count": 5
+    },
+    {
+      "id": "session_start_20260306_053943",
+      "workflow": "session_start",
+      "context": {
+        "project": "projects/ecr-ecn/"
+      },
+      "started_at": "2026-03-06T05:39:43.248922+00:00",
+      "completed_at": "2026-03-06T05:40:16.053066+00:00",
+      "node_count": 6
+    },
+    {
+      "id": "session_start_20260306_035159",
+      "workflow": "session_start",
+      "context": {
+        "project": "projects/ecr-ecn",
+        "task": "optional_nodes_test"
+      },
+      "started_at": "2026-03-06T03:51:59.813437+00:00",
+      "completed_at": "2026-03-06T03:51:59.837920+00:00",
+      "node_count": 6
+    },
+    {
+      "id": "data_ingestion_20260306_035144",
+      "workflow": "data_ingestion",
+      "context": {
+        "project": "projects/ecr-ecn",
+        "task": "exclusion_order_test"
+      },
+      "started_at": "2026-03-06T03:51:44.555407+00:00",
+      "completed_at": "2026-03-06T03:51:44.726810+00:00",
+      "node_count": 6
+    },
+    {
+      "id": "analysis_report_20260306_035122",
+      "workflow": "analysis_report",
+      "context": {
+        "project": "projects/ecr-ecn",
+        "task": "required_outputs_test"
+      },
+      "started_at": "2026-03-06T03:51:22.246719+00:00",
+      "completed_at": "2026-03-06T03:51:22.286101+00:00",
+      "node_count": 4
+    },
+    {
+      "id": "analysis_report_20260306_035106",
+      "workflow": "analysis_report",
+      "context": {
+        "project": "projects/ecr-ecn",
+        "task": "dynamic_delegate_test"
+      },
+      "started_at": "2026-03-06T03:51:06.463270+00:00",
+      "completed_at": "2026-03-06T03:51:06.497642+00:00",
+      "node_count": 4
+    },
+    {
+      "id": "session_start_20260305_114734",
+      "workflow": "session_start",
+      "context": {
+        "project": "projects/ecr-ecn/"
+      },
+      "started_at": "2026-03-05T11:47:34.218054+00:00",
+      "completed_at": "2026-03-05T11:48:07.711941+00:00",
+      "node_count": 5
+    },
+    {
+      "id": "post_task_20260305_093332",
+      "workflow": "post_task",
+      "context": {
+        "project": "projects/ecr-ecn",
+        "task": "v22 統一架構重構 + Die Diagonal 修正 + Pure FPKC 分組"
+      },
+      "started_at": "2026-03-05T09:33:32.519614+00:00",
+      "completed_at": "2026-03-05T09:33:47.828439+00:00",
+      "node_count": 5
+    },
+    {
+      "id": "post_task_20260305_063317",
+      "workflow": "post_task",
+      "context": {
+        "project": "projects/ecr-ecn",
+        "task": "v21 Thk Source simplification - all thickness/die data purely from bom_material_detail"
+      },
+      "started_at": "2026-03-05T06:33:17.269838+00:00",
+      "completed_at": "2026-03-05T06:33:59.471231+00:00",
+      "node_count": 5
+    },
+    {
+      "id": "post_task_20260305_061624",
+      "workflow": "post_task",
+      "context": {
+        "project": "projects/ecr-ecn",
+        "task": "v21 report generation with bom_material_detail enrichment"
+      },
+      "started_at": "2026-03-05T06:16:24.669330+00:00",
+      "completed_at": "2026-03-05T06:17:27.838559+00:00",
+      "node_count": 5
+    },
+    {
+      "id": "post_task_20260305_060334",
+      "workflow": "post_task",
+      "context": {
+        "project": "projects/BOM資料結構分析",
+        "task": "build bom_material_detail table in bom.db"
+      },
+      "started_at": "2026-03-05T06:03:34.532968+00:00",
+      "completed_at": "2026-03-05T06:04:41.698224+00:00",
+      "node_count": 5
+    },
+    {
+      "id": "session_start_20260305_053645",
+      "workflow": "session_start",
+      "context": {
+        "project": "projects/ecr-ecn"
+      },
+      "started_at": "2026-03-05T05:36:45.649873+00:00",
+      "completed_at": "2026-03-05T05:37:30.372553+00:00",
+      "node_count": 4
+    },
+    {
+      "id": "post_task_20260305_053223",
+      "workflow": "post_task",
+      "context": {
+        "project": "projects/ecr-ecn",
+        "task": "fix_retrospective_gaps: compound alt materials + fallback parts + die size ranges + stats cleanup"
+      },
+      "started_at": "2026-03-05T05:32:23.308088+00:00",
+      "completed_at": "2026-03-05T05:35:20.472824+00:00",
+      "node_count": 5
+    },
+    {
+      "id": "post_task_20260305_034603",
+      "workflow": "post_task",
+      "context": {
+        "project": "projects/ecr-ecn",
+        "task": "O-0003 變更類型修正(貼晶→背面金屬化) + PARAM欄新增(24→25欄)"
+      },
+      "started_at": "2026-03-05T03:46:03.029765+00:00",
+      "completed_at": "2026-03-05T03:46:35.713278+00:00",
+      "node_count": 5
+    },
+    {
+      "id": "session_start_20260305_025236",
+      "workflow": "session_start",
+      "context": {
+        "project": "projects/ecr-ecn/"
+      },
+      "started_at": "2026-03-05T02:52:36.443255+00:00",
+      "completed_at": "2026-03-05T02:53:08.151345+00:00",
+      "node_count": 4
+    },
+    {
+      "id": "post_task_20260304_063745",
+      "workflow": "post_task",
+      "context": {
+        "project": "projects/ecr-ecn",
+        "task": "v20: 統一C1-C3/C4排除過濾邏輯(EXCLUDE_PREFIX_SQL) + NSND標註 + C3-F045修復"
+      },
+      "started_at": "2026-03-04T06:37:45.475391+00:00",
+      "completed_at": "2026-03-04T06:42:16.714228+00:00",
+      "node_count": 5
+    },
+    {
+      "id": "post_task_20260302_110757",
+      "workflow": "post_task",
+      "context": {
+        "project": "projects/ecr-ecn",
+        "task": "F-PE0404 full alignment + FUNCTION_EXTRA_TESTS removal + CT Lab integration + dual report v18"
+      },
+      "started_at": "2026-03-02T11:07:57.387688+00:00",
+      "completed_at": "2026-03-02T11:12:19.180151+00:00",
+      "node_count": 5
+    },
+    {
+      "id": "session_start_20260302_040349",
+      "workflow": "session_start",
+      "context": {
+        "project": "projects/ecr-ecn"
+      },
+      "started_at": "2026-03-02T04:03:49.031922+00:00",
+      "completed_at": "2026-03-02T04:04:40.020045+00:00",
+      "node_count": 4
+    },
+    {
+      "id": "post_task_20260302_040146",
+      "workflow": "post_task",
+      "context": {
+        "project": "projects/aec-q-standards",
+        "task": "F-PE0404 vs Q101/Q006 差異比對分析 + 知識庫更新"
+      },
+      "started_at": "2026-03-02T04:01:46.972283+00:00",
+      "completed_at": "2026-03-02T04:02:38.927680+00:00",
+      "node_count": 5
+    },
+    {
+      "id": "post_task_20260302_032526",
+      "workflow": "post_task",
+      "context": {
+        "project": "projects/aec-q-standards",
+        "task": "AEC-Q101 Rev E and AEC-Q006 Rev B complete document extraction"
+      },
+      "started_at": "2026-03-02T03:25:26.438967+00:00",
+      "completed_at": "2026-03-02T03:26:37.686550+00:00",
+      "node_count": 5
+    },
+    {
+      "id": "session_start_20260301_231819",
+      "workflow": "session_start",
+      "context": {
+        "project": "projects/aec-q-standards"
+      },
+      "started_at": "2026-03-01T23:18:19.456331+00:00",
+      "completed_at": "2026-03-01T23:18:43.294067+00:00",
+      "node_count": 4
+    },
+    {
+      "id": "post_task_20260226_131214",
+      "workflow": "post_task",
+      "context": {
+        "project": "projects/ecr-ecn/",
+        "task": "出貨紀錄匹配分析：ship_record去重+排除81內部+終端客戶穿透"
+      },
+      "started_at": "2026-02-26T13:12:14.493712+00:00",
+      "completed_at": "2026-02-26T13:14:32.436691+00:00",
+      "node_count": 5
+    },
+    {
+      "id": "session_start_20260226_120627",
+      "workflow": "session_start",
+      "context": {
+        "project": "projects/ecr-ecn/"
+      },
+      "started_at": "2026-02-26T12:06:27.978649+00:00",
+      "completed_at": "2026-02-26T12:06:58.964802+00:00",
+      "node_count": 4
+    },
+    {
+      "id": "post_task_20260226_104430",
+      "workflow": "post_task",
+      "context": {
+        "project": "projects/ecr-ecn/",
+        "task": "EOL排除+供應商Owner入庫(腳架及跳線變更_20260226.xlsx)"
+      },
+      "started_at": "2026-02-26T10:44:30.921935+00:00",
+      "completed_at": "2026-02-26T10:50:57.023273+00:00",
+      "node_count": 5
+    },
+    {
+      "id": "session_start_20260226_091126",
+      "workflow": "session_start",
+      "context": {
+        "project": "projects/ecr-ecn/"
+      },
+      "started_at": "2026-02-26T09:11:26.232600+00:00",
+      "completed_at": "2026-02-26T09:11:40.063394+00:00",
+      "node_count": 4
+    },
+    {
+      "id": "post_task_20260226_083403",
+      "workflow": "post_task",
+      "context": {
+        "project": "projects/ecr-ecn",
+        "task": "Cleanup deprecated scripts and tables, unify BOM data pipeline"
+      },
+      "started_at": "2026-02-26T08:34:03.911721+00:00",
+      "completed_at": "2026-02-26T08:35:46.717635+00:00",
+      "node_count": 5
+    },
+    {
+      "id": "post_task_20260226_075213",
+      "workflow": "post_task",
+      "context": {
+        "project": "projects/BOM資料結構分析",
+        "task": "intake_bom.py com-level fallback fix and bom.db rebuild"
+      },
+      "started_at": "2026-02-26T07:52:13.530979+00:00",
+      "completed_at": "2026-02-26T07:54:21.589217+00:00",
+      "node_count": 5
+    },
+    {
+      "id": "post_task_20260226_053013",
+      "workflow": "post_task",
+      "context": {
+        "project": "projects/ecr-ecn",
+        "task": "v16 DA segment fix + BOP correspondence + QV assignment + report regen"
+      },
+      "started_at": "2026-02-26T05:30:13.410702+00:00",
+      "completed_at": "2026-02-26T05:33:19.531629+00:00",
+      "node_count": 5
+    },
+    {
+      "id": "post_task_20260226_050355",
+      "workflow": "post_task",
+      "context": {
+        "project": "projects/ecr-ecn",
+        "task": "Comprehensive multi-route fix: ALL changes (O-0001~O-0004), LF+Wire+Compound splits, O-0003 dedup, reports v15"
+      },
+      "started_at": "2026-02-26T05:03:55.319438+00:00",
+      "completed_at": "2026-02-26T05:09:44.541133+00:00",
+      "node_count": 5
+    },
+    {
+      "id": "post_task_20260226_043646",
+      "workflow": "post_task",
+      "context": {
+        "project": "projects/ecr-ecn",
+        "task": "v14 報告更新（Excel+Word+O-0004產品清單）"
+      },
+      "started_at": "2026-02-26T04:36:46.195245+00:00",
+      "completed_at": "2026-02-26T04:37:11.867221+00:00",
+      "node_count": 5
+    },
+    {
+      "id": "post_task_20260226_042445",
+      "workflow": "post_task",
+      "context": {
+        "project": "projects/ecr-ecn/",
+        "task": "fix_dual_route_families: 512 dual-route products A42+Cu LF, 336 missing Cu entries added, families 76->78"
+      },
+      "started_at": "2026-02-26T04:24:45.783790+00:00",
+      "completed_at": "2026-02-26T04:27:30.855553+00:00",
+      "node_count": 5
+    }
+  ]
+}

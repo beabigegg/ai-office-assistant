@@ -1,0 +1,44 @@
+{
+  "name": "knowledge_lifecycle",
+  "description": "Knowledge recording and lifecycle workflow. Classify → write → check promote.",
+  "nodes": [
+    {
+      "id": "classify_knowledge",
+      "description": "Classify incoming knowledge: official doc → skills/external, inference → dynamic",
+      "depends_on": [],
+      "required": true,
+      "required_outputs": [],
+      "validator": null,
+      "validator_params": {}
+    },
+    {
+      "id": "write_to_dynamic",
+      "description": "Write knowledge to shared/kb/dynamic/ with proper format. New entries in learning_notes.md MUST include <!-- status: active --> marker.",
+      "depends_on": ["classify_knowledge"],
+      "required": true,
+      "required_outputs": [
+        {"path_contains": "shared/kb/dynamic/", "description": "knowledge written to dynamic KB"}
+      ],
+      "validator": "check_dynamic_kb_status",
+      "validator_params": {}
+    },
+    {
+      "id": "sync_knowledge_index",
+      "description": "Sync dynamic KB changes to kb_index.db after writing",
+      "depends_on": ["write_to_dynamic"],
+      "required": false,
+      "required_outputs": [],
+      "validator": null,
+      "validator_params": {}
+    },
+    {
+      "id": "check_promote_threshold",
+      "description": "Check if dynamic KB has enough validated entries to suggest /promote",
+      "depends_on": ["write_to_dynamic"],
+      "required": false,
+      "required_outputs": [],
+      "validator": null,
+      "validator_params": {}
+    }
+  ]
+}

@@ -1,0 +1,67 @@
+{
+  "name": "data_ingestion",
+  "description": "New data ingestion workflow. Archive → detect → confirm → exclude → ingest → validate.",
+  "nodes": [
+    {
+      "id": "archive_original",
+      "description": "Archive original file to {P}/vault/originals/",
+      "depends_on": [],
+      "required": true,
+      "required_outputs": [
+        {"path_contains": "vault/originals/", "description": "file archived to vault/originals/"}
+      ],
+      "validator": null,
+      "validator_params": {}
+    },
+    {
+      "id": "detect_structure",
+      "description": "Detect file structure: columns, encoding, row count, data types",
+      "depends_on": ["archive_original"],
+      "required": true,
+      "required_outputs": [],
+      "validator": null,
+      "validator_params": {}
+    },
+    {
+      "id": "confirm_with_user",
+      "description": "Present structure findings and column mappings to user for confirmation",
+      "depends_on": ["detect_structure"],
+      "required": true,
+      "required_outputs": [],
+      "validator": null,
+      "validator_params": {}
+    },
+    {
+      "id": "apply_exclusions",
+      "description": "Apply data exclusion rules (e.g., no RD-/PE- records)",
+      "depends_on": ["confirm_with_user"],
+      "required": true,
+      "required_outputs": [],
+      "validator": "check_exclusion",
+      "validator_params": {
+        "excluded_prefixes": ["RD-", "PE-"],
+        "scope": "current_batch"
+      }
+    },
+    {
+      "id": "ingest_to_db",
+      "description": "Ingest cleaned data into SQLite database with source tracking",
+      "depends_on": ["apply_exclusions"],
+      "required": true,
+      "required_outputs": [
+        {"path_contains": "workspace/db/", "description": "SQLite DB updated"}
+      ],
+      "validator": null,
+      "validator_params": {}
+    },
+    {
+      "id": "post_validation",
+      "description": "Validate ingested data quality. Leader runs systematic quality checks directly (NULL rates, duplicates, value ranges, encoding).",
+      "depends_on": ["ingest_to_db"],
+      "required": true,
+      "required_outputs": [],
+      "validator": null,
+      "validator_params": {}
+    }
+  ]
+}

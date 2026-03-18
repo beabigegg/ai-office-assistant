@@ -1,0 +1,29 @@
+name: ai-office
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.13
+  - pip
+  - pip:
+    # --- Core (data processing) ---
+    - openpyxl
+    - chardet
+    - pyyaml
+    - requests
+
+    # --- Document generation ---
+    - python-docx
+    - python-pptx
+    - PyMuPDF
+    - pdfplumber
+
+    # --- MCP server ---
+    - mcp
+
+    # --- Windows COM automation ---
+    - pywin32
+
+    # --- Optional: web/API ---
+    # - flask
+    # - python-dotenv
