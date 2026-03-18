@@ -13,7 +13,7 @@ import tempfile
 from pathlib import Path
 from datetime import datetime, timezone
 
-ROOT = Path(r'D:\AI_test')
+ROOT = Path(__file__).resolve().parent.parent.parent
 WORKFLOWS_DIR = ROOT / 'shared' / 'workflows'
 DEFINITIONS_DIR = WORKFLOWS_DIR / 'definitions'
 VALIDATORS_DIR = WORKFLOWS_DIR / 'validators'

@@ -1,10 +1,20 @@
 {
   "active": {},
   "counters": {
-    "session_start": 21,
+    "session_start": 22,
     "post_task": 29
   },
   "history": [
+    {
+      "id": "session_start_20260318_093535",
+      "workflow": "session_start",
+      "context": {
+        "project": ""
+      },
+      "started_at": "2026-03-18T09:35:35.578264+00:00",
+      "completed_at": "2026-03-18T09:35:53.754584+00:00",
+      "node_count": 6
+    },
     {
       "id": "session_start_20260318_062446",
       "workflow": "session_start",
@@ -524,17 +534,6 @@
       },
       "started_at": "2026-02-26T04:36:46.195245+00:00",
       "completed_at": "2026-02-26T04:37:11.867221+00:00",
-      "node_count": 5
-    },
-    {
-      "id": "post_task_20260226_042445",
-      "workflow": "post_task",
-      "context": {
-        "project": "projects/ecr-ecn/",
-        "task": "fix_dual_route_families: 512 dual-route products A42+Cu LF, 336 missing Cu entries added, families 76->78"
-      },
-      "started_at": "2026-02-26T04:24:45.783790+00:00",
-      "completed_at": "2026-02-26T04:27:30.855553+00:00",
       "node_count": 5
     }
   ]

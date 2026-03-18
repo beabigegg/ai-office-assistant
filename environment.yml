@@ -21,8 +21,8 @@ dependencies:
     # --- MCP server ---
     - mcp
 
-    # --- Windows COM automation ---
-    - pywin32
+    # --- Windows COM automation (Windows only) ---
+    # - pywin32
 
     # --- Optional: web/API ---
     # - flask
