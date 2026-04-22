@@ -1,0 +1,90 @@
+{
+  "node": "apply_exclusions",
+  "description": "Apply project-level exclusion rules on the in-memory dataset before DB write. Exclusion decisions are per-project: BOM project keeps all data (D-155), ECR/ECN filters RD-/PE- prefixes at query layer. This node's job is to produce the final row set plus a reasoned exclusion report, NOT to write to DB.",
+  "input_schema": {
+    "type": "object",
+    "required": ["project", "archived_path", "confirmed_structure"],
+    "properties": {
+      "project": {"type": "string"},
+      "archived_path": {"type": "string"},
+      "confirmed_structure": {
+        "type": "object",
+        "description": "The structure object approved in confirm_with_user (same shape as detect_structure output_schema, minus anomalies)."
+      },
+      "exclusion_policy": {
+        "type": "object",
+        "description": "Explicit policy for THIS ingestion. Leader derives from project conventions and passes in.",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": ["keep_all", "exclude_prefixes", "exclude_status", "custom"],
+            "description": "keep_all = BOM-style full ingest (D-155). exclude_prefixes = drop rows whose part-number column starts with listed prefixes. exclude_status = drop rows by status column match. custom = Leader-supplied SQL/python predicate."
+          },
+          "excluded_prefixes": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "e.g. ['RD-', 'PE-', 'WAFRD', 'LEFRD', 'WIRRDD', 'COMRD']. Applied to part-number-like columns."
+          },
+          "excluded_statuses": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "e.g. ['EOL', 'PM EOL', 'GD', 'MBU3']."
+          },
+          "part_number_columns": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Explicit list of columns to scan for prefix match. If empty, downstream heuristically picks columns containing 'part_number', 'part_no', 'item_no'."
+          },
+          "custom_predicate": {
+            "type": "string",
+            "description": "Optional Python lambda-style expression (row dict → bool). Used when mode=custom."
+          }
+        }
+      }
+    }
+  },
+  "output_schema": {
+    "type": "object",
+    "required": ["operation_id", "rows_in", "rows_out", "exclusion_summary"],
+    "properties": {
+      "operation_id": {
+        "type": "string",
+        "description": "UUID/timestamp-based id stamped on every row in the downstream ingest_to_db step (_operation_id column). Required by the check_exclusion validator in scope=current_batch mode."
+      },
+      "rows_in": {
+        "type": "integer",
+        "description": "Total rows read from source BEFORE exclusion."
+      },
+      "rows_out": {
+        "type": "integer",
+        "description": "Rows that survived exclusion and will be passed to ingest_to_db."
+      },
+      "exclusion_summary": {
+        "type": "array",
+        "description": "One entry per exclusion rule actually fired. Empty if mode=keep_all.",
+        "items": {
+          "type": "object",
+          "required": ["rule", "matched_rows"],
+          "properties": {
+            "rule": {"type": "string", "description": "Human-readable rule name, e.g. 'prefix=RD-' or 'status=EOL'."},
+            "matched_rows": {"type": "integer"},
+            "sample_keys": {
+              "type": "array",
+              "items": {"type": "string"},
+              "description": "Up to 5 example part numbers / keys excluded, for Leader verification."
+            }
+          }
+        }
+      },
+      "filtered_dataset_path": {
+        "type": "string",
+        "description": "Temp path holding the filtered rows (parquet/csv). Consumed by ingest_to_db, deleted on success."
+      },
+      "warnings": {
+        "type": "array",
+        "items": {"type": "string"},
+        "description": "Non-fatal concerns to surface: e.g. 'no part_number-like column found; exclusion rules inactive', 'PANJIT -AU suffix detected — confirm intent'."
+      }
+    }
+  }
+}

@@ -1,0 +1,90 @@
+{
+  "node": "ingest_to_db",
+  "description": "Write the filtered dataset into the project SQLite database with full source tracking. Every row MUST carry _operation_id, _source_file, _source_version, _source_row. Idempotent: if operation_id already committed, return early with existing counts.",
+  "input_schema": {
+    "type": "object",
+    "required": ["project", "operation_id", "filtered_dataset_path", "table_plan"],
+    "properties": {
+      "project": {"type": "string"},
+      "operation_id": {
+        "type": "string",
+        "description": "From apply_exclusions. Used for idempotency check + stamped on every row as _operation_id."
+      },
+      "filtered_dataset_path": {
+        "type": "string",
+        "description": "Temp dataset path from apply_exclusions."
+      },
+      "source_file": {
+        "type": "string",
+        "description": "Archived source filename (basename of archived_path). Stamped on rows as _source_file."
+      },
+      "source_sha256": {
+        "type": "string",
+        "description": "Stamped as _source_version for long-term traceability across file revisions."
+      },
+      "table_plan": {
+        "type": "array",
+        "description": "One entry per target table. Must align with proposed_tables confirmed by user.",
+        "items": {
+          "type": "object",
+          "required": ["sheet", "table_name", "mode"],
+          "properties": {
+            "sheet": {"type": "string"},
+            "table_name": {"type": "string"},
+            "mode": {
+              "type": "string",
+              "enum": ["create", "append", "replace"],
+              "description": "create = new table (fail if exists). append = INSERT into existing. replace = DROP + create."
+            },
+            "column_mapping": {
+              "type": "object",
+              "description": "Optional explicit map from source column → DB column. If absent, use source names as-is (snake_cased)."
+            }
+          }
+        }
+      },
+      "batch_size": {
+        "type": "integer",
+        "description": "INSERT batch size. Default 1000 per CLAUDE.md technical constraints."
+      }
+    }
+  },
+  "output_schema": {
+    "type": "object",
+    "required": ["db_path", "tables_written", "total_rows_inserted"],
+    "properties": {
+      "db_path": {
+        "type": "string",
+        "description": "Absolute path to the SQLite DB that was modified. Must contain 'workspace/db/' to satisfy workflow required_outputs."
+      },
+      "tables_written": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["table_name", "rows_inserted", "rows_existing_before"],
+          "properties": {
+            "table_name": {"type": "string"},
+            "rows_inserted": {"type": "integer"},
+            "rows_existing_before": {"type": "integer"},
+            "rows_total_after": {"type": "integer"},
+            "tracking_columns_added": {
+              "type": "array",
+              "items": {"type": "string"},
+              "description": "Tracking columns that were created/ensured on this run (e.g. ['_operation_id','_source_file','_source_version','_source_row'])."
+            }
+          }
+        }
+      },
+      "total_rows_inserted": {"type": "integer"},
+      "idempotency_status": {
+        "type": "string",
+        "enum": ["fresh_insert", "skipped_already_committed", "partial_resume"],
+        "description": "fresh_insert = first time operation_id was seen. skipped = operation_id already present in DB, nothing written."
+      },
+      "warnings": {
+        "type": "array",
+        "items": {"type": "string"}
+      }
+    }
+  }
+}

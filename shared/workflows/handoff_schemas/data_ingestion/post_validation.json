@@ -1,0 +1,73 @@
+{
+  "node": "post_validation",
+  "description": "Systematic quality validation after DB insert. Runs the data_ingestion__post_validation.yaml checklist: NULL rate, duplicate rows, value-domain sanity, and tracking-column presence. Produces checklist_responses for check_checklist + check_traceability validators.",
+  "input_schema": {
+    "type": "object",
+    "required": ["project", "db_path", "operation_id", "tables_written"],
+    "properties": {
+      "project": {"type": "string"},
+      "db_path": {"type": "string"},
+      "operation_id": {
+        "type": "string",
+        "description": "Scope all checks to rows stamped with this operation_id (current batch)."
+      },
+      "tables_written": {
+        "type": "array",
+        "items": {"type": "string"},
+        "description": "Tables to validate. Checklist items run per-table."
+      },
+      "checklist_path": {
+        "type": "string",
+        "description": "Defaults to shared/workflows/checklists/data_ingestion__post_validation.yaml. Override only for test fixtures."
+      }
+    }
+  },
+  "output_schema": {
+    "type": "object",
+    "required": ["checklist_responses", "overall_status"],
+    "properties": {
+      "checklist_responses": {
+        "type": "array",
+        "description": "One entry per checklist item (pv-001 … pv-NNN). Consumed by check_checklist validator.",
+        "items": {
+          "type": "object",
+          "required": ["id", "status", "evidence"],
+          "properties": {
+            "id": {"type": "string", "description": "Checklist item id, e.g. 'pv-001'."},
+            "status": {
+              "type": "string",
+              "enum": ["pass", "fail", "warn", "na"]
+            },
+            "evidence": {
+              "type": "string",
+              "description": "Plain-text evidence line. Must contain a token matching the checklist item's evidence_pattern regex."
+            },
+            "details": {
+              "type": "object",
+              "description": "Structured details per check type.",
+              "properties": {
+                "null_rates": {"type": "object", "description": "{column: fraction}"},
+                "duplicate_groups": {"type": "integer"},
+                "value_ranges": {"type": "object", "description": "{column: {min, max, distinct}}"},
+                "tracking_missing": {
+                  "type": "array",
+                  "items": {"type": "string"},
+                  "description": "Tables/columns missing _operation_id etc."
+                }
+              }
+            }
+          }
+        }
+      },
+      "overall_status": {
+        "type": "string",
+        "enum": ["pass", "warn", "fail"],
+        "description": "pass = all items pass. warn = at least one warn, no fail. fail = any fail (blocks workflow)."
+      },
+      "anomaly_report_path": {
+        "type": "string",
+        "description": "Optional path to a detailed report if anomalies found. Written under {P}/workspace/memos/ by convention."
+      }
+    }
+  }
+}

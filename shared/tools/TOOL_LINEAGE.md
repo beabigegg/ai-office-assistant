@@ -41,6 +41,18 @@
 | **規則** | 唯一合法寫入 std_bom 的腳本；所有下游腳本禁止繞過 |
 | **注意** | 雖歸類為 Tier 1 邏輯（原始入口），但檔案本身在 BOM 專案目錄下，勿誤以為在 shared/tools/ |
 
+### sync_agent_rules.py
+| 屬性 | 內容 |
+|------|------|
+| **職責** | 將 Skill 規則同步進 node-agent 定義的 `## 內嵌規則` 區塊（Agent Teams Phase 1） |
+| **Consumes** | `.claude/skills-on-demand/*/.skill.yaml` 的 `applies_to_nodes` 欄位（source of truth） |
+| **Produces** | 改寫 `.claude/agents/<name>.md` 中 `<!-- AUTO-GENERATED:embedded_rules BEGIN/END -->` 之間的內容 |
+| **Key functions** | `collect_skill_rules()` `render_rules_block()` `patch_agent_file()` |
+| **CLI** | `python shared/tools/sync_agent_rules.py --dry-run` 預覽；`--apply` 寫入；`--workflow <name>` 限定範圍 |
+| **規則** | Skill `.skill.yaml` 是 source of truth，agent 的內嵌規則是派生物；任何內嵌規則的修改都必須先改 Skill，再跑 sync |
+| **Node 對應** | `shared/tools/sync_agent_rules.py::NODE_AGENT_MAP` 定義 `(workflow, node_id) → agent basename` |
+| **擴充方式** | 新增節點/agent 時先更新 `NODE_AGENT_MAP`，再跑 sync |
+
 ---
 
 ## Tier 2 — 專案內共用
