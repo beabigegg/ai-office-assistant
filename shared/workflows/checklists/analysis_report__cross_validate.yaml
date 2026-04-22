@@ -1,0 +1,34 @@
+node: cross_validate
+workflow: analysis_report
+description: "分析報告交叉驗證 — 確保 AI 套用了相關領域規則"
+items:
+  - id: cv-001
+    description: "BOM 查詢須覆蓋 sub_com + com 雙層"
+    check_hint: "SQL 是否同時包含 sub_com_item_no 和 com_item_no 的查詢"
+    evidence_pattern: "sub_com.*com|com.*sub_com|雙層"
+    added: 2026-03-05
+    source: "user feedback — BOM 單層查詢漏 1699 成品"
+    status: active
+
+  - id: cv-002
+    description: "die size 不可做容差合併（0.1mil 精度）"
+    check_hint: "輸出的 die size 值是否與原始 DB 完全一致，無取整或合併"
+    evidence_pattern: "精確|0\\.1|不取整|不合併|exact"
+    added: 2026-03-09
+    source: "user feedback — D-089"
+    status: active
+
+  - id: cv-003
+    description: "不確定的映射不可自行推測，必須先查現有資料"
+    check_hint: "是否有任何欄位值是 AI 推導而非從 DB/BOM 查詢得到"
+    evidence_pattern: "查詢|SELECT|DB|查不到|問使用者"
+    added: 2026-03-02
+    source: "D-092 — PKG CODE 三次猜測全錯"
+    status: active
+
+  - id: cv-004
+    description: "規範變更須比對連帶觸發（跨規範交叉影響）"
+    check_hint: "若涉及規範，是否檢查了 F-PE0404/Q006/Q101 的交互影響"
+    added: 2026-04-01
+    source: "MEMORY feedback — F-PE0404 未觸發 Q006"
+    status: active

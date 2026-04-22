@@ -1,0 +1,62 @@
+{
+  "name": "session_start",
+  "description": "Session startup workflow. Read state → diff DB → flag questions → report ready.",
+  "nodes": [
+    {
+      "id": "read_project_state",
+      "description": "Read {P}/workspace/project_state.md to restore session context",
+      "depends_on": [],
+      "required": true,
+      "required_outputs": [
+        {"path_contains": "project_state.md", "description": "project_state.md read"}
+      ],
+      "validator": null,
+      "validator_params": {}
+    },
+    {
+      "id": "load_active_context",
+      "description": "LAZY: Do NOT preload active_rules_summary.md at startup. Instead use kb_index.py related/impacts on demand during work. This saves ~22KB (~7K tokens) per session.",
+      "depends_on": ["read_project_state"],
+      "required": false,
+      "required_outputs": [],
+      "validator": null,
+      "validator_params": {}
+    },
+    {
+      "id": "check_knowledge_health",
+      "description": "Run kb_index.py validate to detect expired TTL, supersede inconsistencies, and semantic conflicts. Report any WARN/ERROR to user.",
+      "depends_on": ["read_project_state"],
+      "required": false,
+      "required_outputs": [],
+      "validator": "check_knowledge_health",
+      "validator_params": {}
+    },
+    {
+      "id": "diff_db",
+      "description": "Check DB for changes since last session (new tables, row counts)",
+      "depends_on": ["read_project_state"],
+      "required": false,
+      "required_outputs": [],
+      "validator": null,
+      "validator_params": {}
+    },
+    {
+      "id": "flag_open_questions",
+      "description": "Identify and flag open questions from project_state.md",
+      "depends_on": ["read_project_state"],
+      "required": false,
+      "required_outputs": [],
+      "validator": null,
+      "validator_params": {}
+    },
+    {
+      "id": "report_ready",
+      "description": "Report session ready status to user with context summary",
+      "depends_on": ["read_project_state"],
+      "required": true,
+      "required_outputs": [],
+      "validator": null,
+      "validator_params": {}
+    }
+  ]
+}

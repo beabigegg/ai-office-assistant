@@ -1,0 +1,10 @@
+node: confirm_with_user
+workflow: data_ingestion
+description: "資料結構確認 — 確保 AI 正確理解資料結構後再入庫"
+items:
+  - id: cu-001
+    description: "已向使用者確認資料欄位對應關係"
+    check_hint: "列出原始欄位與 DB 欄位的映射，標記不確定項"
+    added: 2026-04-02
+    source: "data_ingestion 結構確認標準"
+    status: active

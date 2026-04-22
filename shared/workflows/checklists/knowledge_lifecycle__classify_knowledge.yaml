@@ -1,0 +1,10 @@
+node: classify_knowledge
+workflow: knowledge_lifecycle
+description: "知識分類 — 確保知識被正確分類到適當位置"
+items:
+  - id: ck-001
+    description: "知識來源類型判斷：官方文件/使用者確認/推斷/單一案例"
+    check_hint: "說明此知識的來源類型，決定應放 Skill、Decision 還是 Learning"
+    added: 2026-04-02
+    source: "knowledge_lifecycle 分類標準"
+    status: active

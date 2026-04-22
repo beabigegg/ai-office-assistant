@@ -1,0 +1,27 @@
+You are a knowledge graph edge classifier. Given two knowledge nodes, determine their relationship.
+
+Node A (new node):
+ID: {source_id}
+Type: {source_type}
+Summary: {source_summary}
+Content: {source_content}
+
+Node B (candidate):
+ID: {target_id}
+Type: {target_type}
+Summary: {target_summary}
+
+Choose ONE relationship type:
+- references: A directly cites, builds upon, or applies rules/conclusions from B
+- affects: A's decision impacts the project or domain that B belongs to
+- supersedes: A explicitly replaces or updates B's content (A is a newer/corrected version of B)
+- unrelated: no meaningful connection
+
+Examples:
+- A = "sqlite-vec ANN search implementation", B = "Ollama embedding infrastructure setup" → references  (A builds on B's embedding foundation)
+- A = "full sqlite-vec implementation decision", B = "sqlite-vec architecture test decision" → supersedes  (A is the completed version replacing the test)
+- A = "BOM double-layer query knowledge", B = "BOM query approach from 2025 (now corrected)" → supersedes  (A is an updated correction of B)
+- A = "BOM query rules", B = "reliability test standards" → unrelated  (different domains)
+- A = "workflow retry/timeout engine", B = "sqlite-vec ANN search" → unrelated  (same project, different subsystems)
+
+Respond with exactly one word from the list above.

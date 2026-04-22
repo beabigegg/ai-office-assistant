@@ -1,0 +1,10 @@
+node: record_knowledge
+workflow: post_task
+description: "知識記錄 — 確保任務中的新發現被記錄"
+items:
+  - id: rk-001
+    description: "是否有新規則/發現需要記錄為 Learning"
+    check_hint: "列出任務中觀察到的新知識，或明確說明無新發現"
+    added: 2026-04-02
+    source: "post_task 知識記錄標準"
+    status: active

@@ -1,0 +1,35 @@
+node: post_validation
+workflow: data_ingestion
+description: "資料入庫後品質驗證"
+items:
+  - id: pv-001
+    description: "檢查各欄位 NULL 率是否異常"
+    check_hint: "主要欄位 NULL 率 >5% 應標記異常並說明原因"
+    evidence_pattern: "NULL.*[0-9]|null.*rate|空值率|0%"
+    added: 2026-04-02
+    source: "data_ingestion 標準品質檢查"
+    status: active
+
+  - id: pv-002
+    description: "檢查是否有完全重複的列"
+    check_hint: "用 GROUP BY 全欄位 HAVING COUNT>1 查詢"
+    evidence_pattern: "[0-9]+.*重複|duplicate|無重複|0.*duplicate"
+    added: 2026-04-02
+    source: "data_ingestion 標準品質檢查"
+    status: active
+
+  - id: pv-003
+    description: "檢查關鍵數值欄位值域合理性"
+    check_hint: "列出 MIN/MAX/DISTINCT COUNT，標記明顯異常值"
+    evidence_pattern: "MIN|MAX|DISTINCT|min|max|值域"
+    added: 2026-04-02
+    source: "data_ingestion 標準品質檢查"
+    status: active
+
+  - id: pv-004
+    description: "驗證追溯欄位（_operation_id, _source_file, _source_row）存在且非空"
+    check_hint: "用 PRAGMA table_info 確認新入庫 table 含有追溯欄位，並查詢 NULL 數量"
+    evidence_pattern: "_operation_id|_source_file|追溯"
+    added: 2026-04-07
+    source: "harness engineering R3 — 資料入庫追溯性硬護欄"
+    status: active

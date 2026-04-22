@@ -1,0 +1,57 @@
+{
+  "name": "post_task",
+  "description": "Post-Task Checklist enforcement. Triggered after every significant task completion.",
+  "nodes": [
+    {
+      "id": "update_project_state",
+      "description": "Update project_state.md with current stage, new outputs, data changes",
+      "depends_on": [],
+      "required": true,
+      "required_outputs": [
+        {"path_contains": "project_state.md", "description": "project_state.md must be written"}
+      ],
+      "validator": "check_project_state",
+      "validator_params": {"max_age_seconds": 600}
+    },
+    {
+      "id": "record_decisions",
+      "description": "Check decisions.md for new entries with D-NNN format, ensure sequential numbering",
+      "depends_on": ["update_project_state"],
+      "required": true,
+      "required_outputs": [
+        {"path_contains": "decisions.md", "description": "decisions.md checked/updated"}
+      ],
+      "validator": "check_decisions",
+      "validator_params": {}
+    },
+    {
+      "id": "record_knowledge",
+      "description": "Record new rules/findings. Read checklist, report what was learned or explicitly state no new findings.",
+      "depends_on": ["update_project_state"],
+      "required": true,
+      "required_outputs": [],
+      "validator": "check_checklist",
+      "validator_params": {}
+    },
+    {
+      "id": "check_memory_trigger",
+      "description": "Evaluate memory snapshot conditions. Create snapshot if conditions met.",
+      "depends_on": ["record_decisions", "record_knowledge"],
+      "required": true,
+      "required_outputs": [
+        {"path_contains": "memory/", "description": "memory snapshot if conditions met"}
+      ],
+      "validator": "check_memory",
+      "validator_params": {}
+    },
+    {
+      "id": "check_promote",
+      "description": "Check if /promote should be suggested (every 3 post_task completions)",
+      "depends_on": ["check_memory_trigger"],
+      "required": false,
+      "required_outputs": [],
+      "validator": null,
+      "validator_params": {}
+    }
+  ]
+}
