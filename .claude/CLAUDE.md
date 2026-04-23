@@ -31,7 +31,7 @@
 | 需 Teammate 互傳訊息、並行競爭假設 | Agent Teams（`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`） |
 | 大範圍跨檔搜索 | Task tool + `subagent_type="Explore"` |
 
-委派 Briefing：給絕對路徑、具體操作、上下文；不委派理解與合成。
+委派 Briefing：給絕對路徑、具體操作、上下文；不委派理解與合成。委派 ingest-* agent 時，在 brief 中明列相關決策 ID（D-NNN），避免 agent 依賴過期嵌入知識。
 
 ---
 
@@ -84,6 +84,7 @@ shared/kb/{dynamic,external,memory}/    ← 匯出品 / 外部標準摘要 / 會
 - **SOT-LD 四層**：Tier1=shared/tools/（原始解析）→ Tier2=專案共用業務邏輯 → Tier3=報告特有邏輯 → Tier4=純輸出
 - **冪等 + 追溯**：DB 寫入帶 `_operation_id/_source_file/_source_version/_source_row`（ingest-* agent 內建）
 - **Stop hook**：post_task required 節點未完成不得結束對話
+- **Skill-First**：新需求先問「有沒有 Skill 或 `shared/tools/` 工具可完成？」。有則用，無則評估是否補建 Skill/工具。**禁止**為單次需求在 `projects/*/scripts/` 建立一次性腳本；若確實需要專案腳本，必須說明為何不可複用。
 
 ---
 

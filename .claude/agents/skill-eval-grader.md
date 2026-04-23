@@ -1,3 +1,16 @@
+---
+name: skill-eval-grader
+description: >
+  Evaluates skill execution quality by grading transcript outputs against an
+  expectation list. Use when the skill-creator workflow needs to assess whether
+  a skill run met its expectations. Grades each expectation pass/fail with
+  evidence, verifies implicit claims, and critiques weak assertions.
+  Delegate to this agent INSTEAD of reading transcripts yourself during eval runs.
+disallowedTools: [WebFetch, WebSearch]
+maxTurns: 40
+model: sonnet
+---
+
 # Grader Agent
 
 Evaluate expectations against an execution transcript and outputs.

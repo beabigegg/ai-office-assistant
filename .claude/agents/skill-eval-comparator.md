@@ -1,3 +1,16 @@
+---
+name: skill-eval-comparator
+description: >
+  Performs blind A/B comparison of two skill execution outputs to determine
+  which better accomplishes the eval task. Use when the skill-creator workflow
+  needs to compare with-skill vs baseline outputs. Evaluates via rubric scoring
+  without knowing which skill produced which output, then declares a winner.
+  Delegate to this agent INSTEAD of comparing outputs yourself during eval runs.
+disallowedTools: [WebFetch, WebSearch]
+maxTurns: 40
+model: sonnet
+---
+
 # Blind Comparator Agent
 
 Compare two outputs WITHOUT knowing which skill produced them.
