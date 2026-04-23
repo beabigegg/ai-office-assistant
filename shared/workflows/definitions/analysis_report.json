@@ -5,6 +5,7 @@
     {
       "id": "load_schema",
       "description": "Read SCHEMA_{db}.md to confirm table/column names before writing SQL. If missing, run: python shared/tools/db_schema.py generate <db_path>",
+      "instruction": "Read {P}/workspace/db/SCHEMA_<name>.md OR run: python shared/tools/db_schema.py show {P}/workspace/db/<name>.db --compact. MUST complete before writing any SQL. Never infer column/table names from memory. If SCHEMA file missing: python shared/tools/db_schema.py generate {P}/workspace/db/<name>.db first.",
       "depends_on": [],
       "required": true,
       "required_outputs": [],
@@ -14,6 +15,7 @@
     {
       "id": "query_db",
       "description": "Execute analysis queries against SQLite database (must use schema from load_schema step)",
+      "instruction": "Write SQL using ONLY column/table names confirmed in load_schema. Run: python shared/tools/kb.py search '<domain topic>' --top 5 for domain rule context before querying. Large result sets (50+ rows) → delegate to query-runner agent to avoid context window pollution.",
       "depends_on": ["load_schema"],
       "required": true,
       "required_outputs": [],
@@ -23,6 +25,7 @@
     {
       "id": "cross_validate",
       "description": "Cross-validate query results against domain rules. Read checklist, apply each check, report results in checklist_responses.",
+      "instruction": "Read checklist: shared/workflows/checklists/analysis_report__cross_validate.yaml. Apply each check against query results. Domain rule lookups: python shared/tools/kb.py search '<topic>' → Read relevant SKILL.md if [→ SKILL:name] appears. Submit pass/fail/na with notes for ALL checklist items.",
       "depends_on": ["query_db"],
       "required": true,
       "required_outputs": [],
@@ -32,6 +35,7 @@
     {
       "id": "generate_report",
       "description": "Generate output report (Excel/Word/PPT) to vault/outputs/",
+      "instruction": "Delegate to report-builder agent for Office documents (Excel/Word/PPT via MCP tools). Output path: {P}/vault/outputs/<name>_YYYYMMDD.<ext>. Brief must include: query results data structure, column definitions, format requirements.",
       "depends_on": ["cross_validate"],
       "required": true,
       "required_outputs": [
@@ -46,6 +50,7 @@
     {
       "id": "record_output_path",
       "description": "Record report output path in project_state.md",
+      "instruction": "Add to {P}/workspace/project_state.md '## 主要產出（當前版本）' block: '- YYYY-MM-DD: <report_name> → <relative_path_from_project_root>'. Keep ≤10 entries, remove old versions if exceeded.",
       "depends_on": ["generate_report"],
       "required": true,
       "required_outputs": [

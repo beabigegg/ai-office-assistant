@@ -5,6 +5,7 @@
     {
       "id": "classify_knowledge",
       "description": "Classify incoming knowledge: official doc → skills/external, inference → dynamic. Read checklist and report classification basis.",
+      "instruction": "Read checklist: shared/workflows/checklists/knowledge_lifecycle__classify_knowledge.yaml. Classification rules: (1) Official doc / user-confirmed fact → .claude/skills-on-demand/ OR shared/kb/external/; (2) Inference / single case / observed pattern → shared/kb/dynamic/ (requires status: active marker). Submit checklist_responses with classification basis for each item.",
       "depends_on": [],
       "required": true,
       "required_outputs": [],
@@ -14,6 +15,7 @@
     {
       "id": "write_to_dynamic",
       "description": "Write knowledge to shared/kb/dynamic/ with proper format. New entries in learning_notes.md MUST include <!-- status: active --> marker.",
+      "instruction": "For decisions: python shared/tools/kb.py add-decision --id D-NNN ... For learnings: python shared/tools/kb.py add-learning --id <prefix>-LNN --title '...' --date YYYY-MM-DD --content '...' --confidence high|medium|low. New entries in shared/kb/dynamic/*.md MUST include <!-- status: active --> marker (validator enforces). kb.py writes to both DB (source of truth) and .md (export).",
       "depends_on": ["classify_knowledge"],
       "required": true,
       "required_outputs": [
@@ -25,6 +27,7 @@
     {
       "id": "sync_knowledge_index",
       "description": "Sync dynamic KB changes to kb_index.db after writing",
+      "instruction": "Run: python shared/tools/kb.py build-edges. This updates knowledge graph edges after new nodes added. Optionally: python shared/tools/kb.py validate to check consistency.",
       "depends_on": ["write_to_dynamic"],
       "required": false,
       "required_outputs": [],
@@ -34,6 +37,7 @@
     {
       "id": "check_promote_threshold",
       "description": "Check if dynamic KB has enough validated entries to suggest /promote",
+      "instruction": "Run: python shared/tools/kb.py catalog. If dynamic/ has ≥5 entries with status:active and confidence:high, suggest user run /promote for skill upgrade review.",
       "depends_on": ["write_to_dynamic"],
       "required": false,
       "required_outputs": [],

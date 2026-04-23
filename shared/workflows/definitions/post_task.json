@@ -5,6 +5,7 @@
     {
       "id": "update_project_state",
       "description": "Update project_state.md with current stage, new outputs, data changes",
+      "instruction": "Update {P}/workspace/project_state.md using Block Memory rules. Hot blocks: ## 當前階段(≤10行), ## 活躍任務(≤15行), ## 資料庫現況(≤10行), ## 活躍知識依賴(≤5行), ## 未解問題(≤5條), ## 主要產出（當前版本）(≤10行). Total: knowledge≤150行, project_management≤200行. Completed tasks → project_history.md (not project_state.md). Conditional: new data ingested→update 資料庫現況, new column meanings→append column_semantics.md, new report→record path in 主要產出.",
       "depends_on": [],
       "required": true,
       "required_outputs": [
@@ -16,6 +17,7 @@
     {
       "id": "record_decisions",
       "description": "Check decisions.md for new entries with D-NNN format, ensure sequential numbering",
+      "instruction": "1. Run: python shared/tools/kb.py next-id (get next D-NNN). 2. For each new decision: python shared/tools/kb.py add-decision --id D-NNN --date YYYY-MM-DD --project {P} --target '...' --question '...' --decision '...' --impact '...' [--supersedes D-XXX] [--refs_skill X] [--review_by YYYY-MM-DD]. 3. If no new decisions: complete with outputs {\"path_contains\":\"decisions.md\",\"skipped\":true}. Validator checks sequential numbering + conflict detection; ERROR level blocks flow.",
       "depends_on": ["update_project_state"],
       "required": true,
       "required_outputs": [
@@ -27,6 +29,7 @@
     {
       "id": "record_knowledge",
       "description": "Record new rules/findings. Read checklist, report what was learned or explicitly state no new findings.",
+      "instruction": "Read checklist: shared/workflows/checklists/post_task__record_knowledge.yaml. For each new learning: python shared/tools/kb.py add-learning --id <prefix>-LNN --title '...' --date YYYY-MM-DD --content '...' --confidence high|medium|low [--project {P}] [--related_decision D-NNN]. If no new findings, state explicitly in checklist_responses. Submit responses for ALL checklist items.",
       "depends_on": ["update_project_state"],
       "required": true,
       "required_outputs": [],
@@ -36,6 +39,7 @@
     {
       "id": "check_memory_trigger",
       "description": "Evaluate memory snapshot conditions. Create snapshot if conditions met.",
+      "instruction": "Conditions — ANY triggers snapshot: ≥3 files written | DB schema changed | report produced | ≥10 conversation rounds | ≥2 new decisions. If triggered: write shared/kb/memory/YYYY-MM-DD.md with session summary (context, decisions, learnings, next steps). Complete with: --outputs '{\"memory_conditions_met\":true|false}'.",
       "depends_on": ["record_decisions", "record_knowledge"],
       "required": true,
       "required_outputs": [
@@ -46,7 +50,8 @@
     },
     {
       "id": "check_hygiene",
-      "description": "Verify workspace temp file count is within limits (CLAUDE.md §8 zero-scatter). WARN at >5, FAIL at >15.",
+      "description": "Verify workspace temp file count is within limits (zero-scatter rule). WARN at >5, FAIL at >15.",
+      "instruction": "Scan for zero-scatter violations: (1) _tmp_*/tmp_*/test_output* files (WARN>5, FAIL>15); (2) files directly under projects/<name>/ not in workspace/ or vault/; (3) files under shared/ root; (4) *.backup.* or _backup/ dirs; (5) empty .gitkeep dirs >30 days old. Report count and paths. Clean up found violations.",
       "depends_on": ["update_project_state"],
       "required": false,
       "required_outputs": [],
@@ -56,6 +61,7 @@
     {
       "id": "sync_backlog",
       "description": "Update backlog.db: mark completed items done, add new action items discovered during task. Required for project_management type projects.",
+      "instruction": "Only for project_management type. Run: python shared/tools/backlog.py --project {P} list. For completed items: python shared/tools/backlog.py --project {P} resolve A-NNN --resolution '...'. For new discovered items: python shared/tools/backlog.py --project {P} add --title '...' --priority P0|P1|P2.",
       "depends_on": ["record_decisions"],
       "required": false,
       "required_outputs": [],
@@ -65,6 +71,7 @@
     {
       "id": "check_promote",
       "description": "Check if /promote should be suggested (every 3 post_task completions)",
+      "instruction": "Coordinator auto-counts. Every 3 completions it appends a [PROMOTE] reminder. No manual action needed unless reminder appears.",
       "depends_on": ["check_memory_trigger"],
       "required": false,
       "required_outputs": [],

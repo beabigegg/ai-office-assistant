@@ -214,6 +214,9 @@ def start(workflow_name: str, context: dict, script: str = None) -> tuple:
     )
     if blocked:
         msg += f"  BLOCKED: {', '.join(blocked)}\n"
+    hints = _next_node_hints(defn['nodes'], nodes)
+    if hints:
+        msg += hints
     if injection is not None:
         tag = "OK" if injection["ok"] else "WARN"
         msg += f"  [SCRIPT {tag}] {injection['script']} ({injection['duration_ms']} ms"
@@ -292,6 +295,11 @@ def complete(node_id: str, outputs: dict = None, instance_id: str = None, script
     if ok:
         # Check if all required nodes are now done
         all_required_done = engine.is_terminal_state()
+
+        if not all_required_done:
+            hints = _next_node_hints(inst["definition"]["nodes"], inst["nodes"])
+            if hints:
+                msg += hints
 
         if all_required_done:
             # Auto-skip remaining optional nodes
@@ -465,6 +473,18 @@ def _archive_completed(state: dict, instance_id: str):
 
 def _increment_counter(state: dict, workflow_name: str):
     state["counters"][workflow_name] = state["counters"].get(workflow_name, 0) + 1
+
+
+def _next_node_hints(defn_nodes: list, nodes_state: dict) -> str:
+    """Return instruction text for all READY nodes that have an 'instruction' field."""
+    lines = []
+    for node in defn_nodes:
+        nid = node["id"]
+        if nodes_state.get(nid, {}).get("status") == "ready":
+            instr = node.get("instruction", "").strip()
+            if instr:
+                lines.append(f"\n  [TODO: {nid}]\n  {instr}")
+    return "".join(lines)
 
 
 # ─── Hook Handlers ──────────────────────────────────────────────────
