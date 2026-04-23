@@ -489,6 +489,11 @@ def _detect_significant_work() -> bool:
     patterns = [
         str(ROOT / 'projects' / '*' / 'vault' / 'outputs' / '*'),
         str(ROOT / 'projects' / '*' / 'workspace' / 'db' / '*.db'),
+        # Extended: daily ECR/analysis work patterns
+        str(ROOT / 'projects' / '*' / 'workspace' / 'scripts' / '*.py'),
+        str(ROOT / 'projects' / '*' / 'workspace' / 'project_state.md'),
+        str(ROOT / 'projects' / '*' / 'workspace' / 'memos' / '*'),
+        str(ROOT / 'shared' / 'kb' / 'dynamic' / '*.md'),
     ]
     for pattern in patterns:
         for f in _glob.glob(pattern):
@@ -497,6 +502,23 @@ def _detect_significant_work() -> bool:
                     return True
             except OSError:
                 continue
+
+    # Also check workflow_runtime.jsonl for any recent complete_result event
+    if RUNTIME_LOG.exists():
+        try:
+            with RUNTIME_LOG.open('r', encoding='utf-8') as _f:
+                for _line in _f:
+                    try:
+                        _entry = json.loads(_line.strip())
+                        if _entry.get('event') == 'complete_result':
+                            _ts = _entry.get('ts', '')
+                            if _ts and datetime.fromisoformat(_ts).timestamp() > cutoff:
+                                return True
+                    except (json.JSONDecodeError, ValueError):
+                        continue
+        except OSError:
+            pass
+
     return False
 
 
@@ -523,8 +545,8 @@ def _handle_stop_hook():
                     datetime.now(timezone.utc).isoformat(), encoding='utf-8'
                 )
                 msg = (
-                    "[WARNING] No active workflow, but recent file modifications detected "
-                    "in vault/outputs/ or workspace/db/.\n"
+                    "[WARNING] No active workflow, but recent work detected "
+                    "(workspace/scripts, project_state.md, memos, kb/dynamic, or workflow completion events).\n"
                     "Did you forget to run post_task workflow?\n"
                     "  python shared/workflows/coordinator.py start post_task "
                     "--context '{\"project\":\"...\",\"task\":\"...\"}'\n"

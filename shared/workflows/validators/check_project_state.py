@@ -1,7 +1,9 @@
 """Validator: check_project_state
 Verifies that project_state.md was recently modified (within max_age_seconds).
+Also runs Block Memory content quality checks (WARN-level, non-blocking).
 Also creates a single-version backup (.project_state.prev.md) before validation.
 """
+import re
 import shutil
 import time
 from pathlib import Path
@@ -44,6 +46,62 @@ def validate(context: dict) -> tuple:
     age_str = f"{int(age)}s" if age < 60 else f"{int(age/60)}m {int(age%60)}s"
 
     if age <= max_age:
+        # Mtime OK — run Block Memory content quality checks (WARN-level, non-blocking)
+        warnings = _check_content_quality(target)
+        if warnings:
+            warn_str = ' | '.join(warnings)
+            return True, f"updated {age_str} ago — ⚠ WARN: {warn_str}"
         return True, f"updated {age_str} ago ({target.name})"
     else:
         return False, f"last modified {age_str} ago (threshold: {max_age}s) — {target}"
+
+
+def _check_content_quality(target: Path) -> list:
+    """Return list of warning strings (empty = clean). All checks are WARN-level."""
+    try:
+        content = target.read_text(encoding='utf-8')
+    except OSError:
+        return []
+    lines = content.splitlines()
+    warnings = []
+
+    # 1. Line count soft limit (project_type-aware)
+    project_type = 'project_management' if (
+        'project_type: project_management' in content
+        or '<!-- type: project_management' in content
+    ) else 'knowledge'
+    limit = 200 if project_type == 'project_management' else 150
+    if len(lines) > limit:
+        warnings.append(
+            f"TOO LARGE: {len(lines)} lines (soft limit {limit} for {project_type}). "
+            "Move history to project_history.md."
+        )
+
+    # 2. Required Block Memory sections
+    required_sections = ['## 當前階段', '## 下一步行動',
+                         '## 資料庫現況', '## 未解問題']
+    missing = [s for s in required_sections if s not in content]
+    if missing:
+        warnings.append(f"MISSING SECTIONS: {missing}")
+
+    # 3. Duplicate headings
+    headers = re.findall(r'^#{1,3}\s+(.+)$', content, re.MULTILINE)
+    dups = [h for h in set(headers) if headers.count(h) > 1]
+    if dups:
+        warnings.append(f"DUPLICATE HEADINGS: {dups}")
+
+    # 4. Empty 下一步行動
+    na_match = re.search(
+        r'## 下一步行動\n(.*?)(?=\n##|\Z)', content, re.DOTALL
+    )
+    if na_match:
+        na_lines = [
+            l for l in na_match.group(1).splitlines()
+            if l.strip() and not l.strip().startswith(('>', '注意', '（', '('))
+        ]
+        if not na_lines:
+            warnings.append(
+                "下一步行動 is empty — add actionable items or link to backlog."
+            )
+
+    return warnings

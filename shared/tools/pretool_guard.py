@@ -79,6 +79,26 @@ def main():
             print(f'BLOCKED: {message}', file=sys.stderr)
             sys.exit(2)
 
+    # Workflow state context (informational, non-blocking)
+    try:
+        from pathlib import Path as _Path
+        _state_path = _Path(__file__).resolve().parent.parent / 'workflows' / 'state' / 'current.json'
+        if _state_path.exists():
+            import json as _json
+            _wf = _json.loads(_state_path.read_text(encoding='utf-8'))
+            if _wf.get('active'):
+                _names = [
+                    _inst.get('definition', {}).get('name', '?')
+                    for _inst in _wf['active'].values()
+                ]
+                print(
+                    f'[WORKFLOW-ACTIVE] {", ".join(_names)} '
+                    '— ensure bash command aligns with current workflow phase.',
+                    file=sys.stderr,
+                )
+    except Exception:
+        pass
+
     sys.exit(0)
 
 

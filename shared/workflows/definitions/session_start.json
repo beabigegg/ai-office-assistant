@@ -23,6 +23,15 @@
       "validator_params": {}
     },
     {
+      "id": "load_project_backlog",
+      "description": "If project has backlog.db (project_management type), run backlog.py summary and remind to show open P0/P1, blocked, and stale items. Skipped for knowledge-type projects.",
+      "depends_on": ["read_project_state"],
+      "required": false,
+      "required_outputs": [],
+      "validator": "check_backlog_health",
+      "validator_params": {}
+    },
+    {
       "id": "check_knowledge_health",
       "description": "Run kb_index.py validate to detect expired TTL, supersede inconsistencies, and semantic conflicts. Report any WARN/ERROR to user.",
       "depends_on": ["read_project_state"],

@@ -19,9 +19,6 @@ tools:
   - Bash
   - Grep
   - Glob
-disallowedTools:
-  - WebFetch
-  - WebSearch
 maxTurns: 50
 model: opus
 memory: project
@@ -42,22 +39,65 @@ memory: project
 
 ```
 .claude/
-├── agents/              ← 正式 sub-agent 定義（YAML frontmatter）
-├── agents-legacy/       ← v2.7 舊職能 Agent（歷史參考）
-├── skills/*/SKILL.md    ← 領域知識（自動發現）
-├── commands/            ← /promote, /status, /evolve
-└── CLAUDE.md            ← 系統指令（Leader 行為規範）
+├── agents/                    ← 正式 sub-agent 定義（YAML frontmatter）
+├── skills-on-demand/*/SKILL.md ← 領域知識（按需讀取，非自動載入）
+└── CLAUDE.md                  ← 系統指令（Leader 行為規範）
 
 shared/
 ├── workflows/
 │   ├── coordinator.py        ← 流程閘門引擎（節點依賴 + validator）
-│   ├── definitions/*.json    ← 5 個 workflow 定義
-│   ├── validators/*.py       ← 4 個節點驗證器
+│   ├── definitions/*.json    ← workflow 定義
+│   ├── validators/*.py       ← 節點驗證器
 │   └── state/current.json    ← 運行狀態
-├── kb/dynamic/               ← 成長中的知識
-├── kb/external/              ← 外部標準
-└── tools/                    ← 共用腳本
+├── kb/
+│   ├── knowledge_graph/kb_index.db ← Source of Truth（SQLite + 向量）
+│   ├── dynamic/              ← .md 匯出品
+│   ├── external/             ← 外部標準
+│   └── memory/               ← 會話快照
+└── tools/                    ← 共用腳本（kb.py、db_schema.py 等）
 ```
+
+## Agent Teams 知識（實驗性功能）
+
+Claude Code v2.1.32+ 支援原生 Agent Teams，以環境變數 `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` 啟用。
+
+**與 Sub-agent 的根本差異：**
+- Sub-agent：只能向 Leader 回報結果，彼此不溝通
+- Agent Teams：Teammate 之間可以**直接傳訊**，共享任務列表，自我協調
+
+**架構組成：**
+- Team lead（主管）：建立 team、生成 teammate、協調工作
+- Teammates：各自獨立的 Claude Code 實例，有自己的 context window
+- Task list：共享任務列表（支援依賴管理、鎖定防競爭）
+- Mailbox：agent 間訊息系統（message 單一 / broadcast 全員）
+
+**啟動方式：**用自然語言告訴 Leader，或 Leader 主動判斷任務適合並行時提議
+
+**適用場景（真正有價值的）：**
+- 研究與審查：多 teammate 同時調查不同面向，再相互質疑發現
+- 競爭假設除錯：parallel 測試不同理論，互相嘗試推翻
+- 跨層協調：前端/後端/測試各由不同 teammate 負責
+
+**不適合（開銷 > 收益）：**
+- 順序性任務、同一檔案編輯、依賴關係多的工作
+
+**Windows 限制：**
+- 分割窗格模式需要 tmux/iTerm2，Windows Terminal/VS Code 不支援
+- In-process 模式（Shift+Down 切換）可在任何終端運作
+
+**Token 成本：** 每個 teammate 是獨立 Claude 實例，成本隨 teammate 數線性增加
+
+**Teammate 角色定義：** 可引用現有 sub-agent 定義（`subagent_type` 參數），teammate 繼承該 agent 的 system prompt、tools、model
+
+**Hooks 支援：**
+- `TeammateIdle`：teammate 閒置時觸發（exit 2 可要求繼續工作）
+- `TaskCreated`：任務建立時觸發（exit 2 可阻止）
+- `TaskCompleted`：任務完成時觸發（exit 2 可要求重做）
+
+**已知限制：**
+- In-process teammate 無工作階段恢復（/resume 不適用）
+- 每個 Leader 一次只能管理一個 team
+- Teammate 不能再生成自己的 team（無巢狀）
 
 ## 核心職責
 
@@ -141,6 +181,7 @@ memory: project|user           # 跨會話累積
 ## 注意事項
 
 - Windows 環境，agent 定義的 description 必須用英文（避免 CP950 亂碼）
-- Sub-agent 不能 spawn 其他 sub-agent，跨領域協作由 Leader 串接
-- coordinator.py 管流程順序，sub-agent 管任務委派，兩者正交互補
-- 舊職能 Agent 定義保存在 `.claude/agents-legacy/` 作歷史參考
+- Sub-agent 不能 spawn 其他 sub-agent；Agent Teams 的 teammate 也不能生成子 team
+- 跨領域協作：簡單委派用 sub-agent，需要 agent 間直接討論用 Agent Teams
+- coordinator.py 管流程順序，sub-agent/teams 管任務委派，兩者正交互補
+- 評估 Agent Teams 設計時，務必先用 WebFetch 確認最新官方文件：https://code.claude.com/docs/zh-TW/agent-teams

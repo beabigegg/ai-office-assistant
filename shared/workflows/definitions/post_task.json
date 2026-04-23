@@ -45,6 +45,24 @@
       "validator_params": {}
     },
     {
+      "id": "check_hygiene",
+      "description": "Verify workspace temp file count is within limits (CLAUDE.md §8 zero-scatter). WARN at >5, FAIL at >15.",
+      "depends_on": ["update_project_state"],
+      "required": false,
+      "required_outputs": [],
+      "validator": "check_workspace_hygiene",
+      "validator_params": {}
+    },
+    {
+      "id": "sync_backlog",
+      "description": "Update backlog.db: mark completed items done, add new action items discovered during task. Required for project_management type projects.",
+      "depends_on": ["record_decisions"],
+      "required": false,
+      "required_outputs": [],
+      "validator": "check_backlog_sync",
+      "validator_params": {"required_for_type": "project_management"}
+    },
+    {
       "id": "check_promote",
       "description": "Check if /promote should be suggested (every 3 post_task completions)",
       "depends_on": ["check_memory_trigger"],
