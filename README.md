@@ -7,9 +7,10 @@
 - **多專案管理**：標準化的專案結構（vault / workspace / scripts）
 - **知識架構**：DB-first 知識圖譜（SQLite + Embedding 語意檢索）+ 按需載入 Skill
 - **Workflow 引擎**：資料入庫、分析報告、知識生命週期、Post-Task Checklist
-- **Sub-agent 委派**：query-runner（SQL 隔離）、report-builder（Office COM）、architect（架構掃描）、response-drafter（批量 LLM 呼叫）、table-reader（PDF 視覺辨識）
-- **MCP 伺服器**：Excel / Word / PowerPoint COM 自動化（Windows）
-- **遠端存取**：Claude Dispatch 持久會話支援
+- **Office 文件建立**：Code-based 首選（openpyxl / docx-js / pptxgenjs），MCP COM 編輯已有檔案
+- **Sub-agent 委派**：report-builder、query-runner、architect、table-reader、response-drafter 及 ingest-* 系列
+- **MCP 伺服器**：Excel / Word / PowerPoint COM 自動化（Windows，編輯已有檔案）
+- **PDF 處理**：pypdf / pdfplumber / reportlab（文字提取、合併、新建）
 
 ## 快速開始
 
@@ -44,42 +45,85 @@ conda env update -f environment.yml --prune
 ```
 ├── .claude/
 │   ├── CLAUDE.md              # Claude 運行規則（每次會話自動載入）
-│   ├── agents/                # Sub-agent 定義
+│   ├── agents/                # Sub-agent 定義（git 追蹤）
 │   ├── commands/              # 快速指令
 │   ├── skills/                # 領域 Skill（gitignore，由使用者建立）
 │   │   └── _skill_template/
-│   └── skills-on-demand/      # 按需載入 Skill（gitignore）
+│   └── skills-on-demand/      # 按需載入 Skill（SKILL.md 納入 git 追蹤）
+│       ├── docx-authoring/    # Word 新建（docx-js）
+│       ├── docx-operations/   # Word 編輯已有（MCP COM）
+│       ├── xlsx-authoring/    # Excel 新建（openpyxl + recalc.py）
+│       ├── excel-operations/  # Excel 編輯已有（MCP COM）
+│       ├── pptx-authoring/    # PPT 新建（pptxgenjs / unpack-edit-pack）
+│       ├── pptx-template/     # PPT 公司模板（pptx_panjit）
+│       ├── marp-pptx/         # PPT 快速/PDF（Marp）
+│       ├── pptx-operations/   # PPT 精修已有（MCP COM）
+│       ├── pdf/               # PDF 操作（pypdf / reportlab）
+│       └── skill-creator/     # 建立/評測新 Skill（eval loop）
 ├── shared/
 │   ├── kb/                    # 知識庫（gitignore，由 init.py 建立骨架）
-│   ├── tools/                 # 共用工具腳本
+│   ├── tools/                 # 共用工具腳本（git 追蹤）
+│   │   ├── office/            # soffice.py / pack.py / unpack.py（共用）
+│   │   ├── pptx/              # thumbnail.py / add_slide.py / clean.py
+│   │   ├── docx/              # accept_changes.py / comment.py
+│   │   ├── pdf/               # PDF 表單處理腳本
+│   │   └── recalc.py          # Excel 公式重算（LibreOffice）
 │   ├── workflows/             # Workflow 定義 + Coordinator + Validators
 │   └── protocols/             # 參考協議
 ├── projects/
 │   └── _template/             # 專案範本
+├── skill-creator/             # Skill 評測基礎設施（eval-viewer / scripts）
 ├── environment.yml            # Conda 環境定義（由 init.py 產生）
 ├── init.py                    # 初始化腳本（平台感知 + 套件分組）
-├── CLAUDE.md                  # 本檔首頁說明（→ .claude/CLAUDE.md 為運行規則）
 ├── SETUP.md                   # 首次部署指引
 ├── .env.example               # 環境變數模板
 └── .mcp.json.example          # MCP 設定模板
 ```
+
+## Sub-agent 清單
+
+| Agent | 功能 |
+|-------|------|
+| `report-builder` | Office 文件建立/修改（Excel / Word / PPT / PDF） |
+| `query-runner` | SQL 查詢執行（大量結果隔離） |
+| `architect` | 架構審查、系統演化（/evolve） |
+| `table-reader` | PDF 複雜表格視覺提取 |
+| `response-drafter` | 批量 LLM API 呼叫（>20 項問卷） |
+| `ingest-archiver` | 資料入庫：封存原始檔 |
+| `ingest-structure-detector` | 資料入庫：偵測欄位結構 |
+| `ingest-exclusion-applier` | 資料入庫：套用排除規則 |
+| `ingest-db-writer` | 資料入庫：寫入 SQLite |
+| `ingest-validator` | 資料入庫：後驗品質檢查 |
+
+## Office 文件建立策略
+
+| 任務 | 首選（穩定）| 備選 |
+|------|-----------|------|
+| Excel 新建 | openpyxl + recalc.py | MCP COM |
+| Word 新建 | docx-js（Node.js） | MCP COM |
+| PPT 新建（自由設計） | pptxgenjs（Node.js） | pptx-template |
+| PPT 新建（公司模板） | pptx_panjit（Python） | — |
+| PPT 快速/PDF | Marp | — |
+| 任何格式**編輯已有** | MCP COM | unpack/edit/pack |
 
 ## 跨平台支援
 
 | 元件 | Windows | Linux / macOS |
 |------|---------|---------------|
 | 核心框架 | 完整支援 | 完整支援 |
-| MCP COM 伺服器 | pywin32 自動安裝 | 自動跳過（用 openpyxl/python-docx） |
-| Claude Dispatch | 支援 (x64) | macOS 支援 |
+| Office 新建（code-based） | openpyxl / docx-js / pptxgenjs | 同左 |
+| MCP COM 伺服器（編輯已有） | pywin32 自動安裝 | 不支援 |
+| LibreOffice（recalc / PDF） | 需手動安裝 | 套件管理器安裝 |
 
 ## 版控邊界
 
 | 追蹤（框架） | 忽略（資料與知識） |
 |-------------|-------------------|
-| CLAUDE.md, agents, commands, workflows | skills/kb 實際內容、agent-memory |
-| shared/tools/, shared/protocols/ | `*.db`, `*.xlsx`, `*.pdf`, `*.csv` |
+| CLAUDE.md, agents/, commands/, workflows/ | skills/ 實際內容、agent-memory |
+| skills-on-demand/*/SKILL.md | .skill.yaml（eval 元數據） |
+| shared/tools/（含 office/ pptx/ docx/ pdf/） | shared/kb/（知識庫內容） |
 | projects/_template/ | projects/* 實際專案資料 |
-| environment.yml, init.py | `.env`, `.mcp.json` |
+| environment.yml, init.py | `.env`, `.mcp.json`, `*.db` |
 
 ## 延伸閱讀
 

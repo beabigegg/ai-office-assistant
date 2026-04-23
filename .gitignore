@@ -47,8 +47,9 @@ shared/kb/evolution_proposals/
 !.claude/skills/.gitkeep
 
 # === Skills-on-demand 內容 ===
-.claude/skills-on-demand/*/
-!.claude/skills-on-demand/.gitkeep
+# SKILL.md 為框架定義，納入 git 追蹤
+# .skill.yaml 為本機 eval 元數據，不追蹤
+.claude/skills-on-demand/*/.skill.yaml
 
 # === Legacy（只留本機，不追蹤）===
 .claude/agents-legacy/

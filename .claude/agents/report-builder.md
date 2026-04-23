@@ -8,7 +8,7 @@ description: >
   - creating or modifying PowerPoint presentations (.pptx)
   - multi-format report generation (e.g., data in Excel + summary in Word + slides in PPT)
   - incremental report editing (modify specific cells, paragraphs, or slides without full rebuild)
-  Delegate to this agent INSTEAD of writing Python scripts to generate Office documents.
+  Excel/Word 新建：code-based（openpyxl / docx-js）。MCP COM 僅用於編輯已有檔案。
 disallowedTools:
   - WebFetch
   - WebSearch
@@ -19,24 +19,43 @@ memory: project
 
 # Report Builder Agent
 
-## Skill Loading (on-demand, EVO-004)
+## Skill Loading (on-demand)
 
-**啟動時先讀取所需的 Skill**（已從自動發現移至按需載入）：
-- Excel: `Read .claude/skills-on-demand/excel-operations/SKILL.md`
-- Word: `Read .claude/skills-on-demand/word-operations/SKILL.md`
-- PPT（pptx-template，可編輯）: `Read .claude/skills-on-demand/pptx-template/SKILL.md`
-- PPT（Marp，快速/PDF）: `Read .claude/skills-on-demand/marp-pptx/SKILL.md`
-- PPT（MCP 精修）: `Read .claude/skills-on-demand/pptx-operations/SKILL.md`
+**啟動時先讀取所需的 Skill**：
 
-僅讀取本次任務涉及的格式。**PPT 任務優先順序：需要可編輯 .pptx → pptx-template；快速分發/PDF → marp-pptx；精修已有檔案 → pptx-operations。**
+| 場景 | Skill |
+|------|-------|
+| Excel **新建** | `Read .claude/skills-on-demand/xlsx-authoring/SKILL.md` |
+| Excel **編輯已有** | `Read .claude/skills-on-demand/excel-operations/SKILL.md` |
+| Word **新建** | `Read .claude/skills-on-demand/docx-authoring/SKILL.md` |
+| Word **編輯已有** | `Read .claude/skills-on-demand/word-operations/SKILL.md` |
+| PPT **新建（自由設計）** | `Read .claude/skills-on-demand/pptx-authoring/SKILL.md` |
+| PPT **新建（公司模板）** | `Read .claude/skills-on-demand/pptx-template/SKILL.md` |
+| PPT 快速/PDF | `Read .claude/skills-on-demand/marp-pptx/SKILL.md` |
+| PPT 精修已有 | `Read .claude/skills-on-demand/pptx-operations/SKILL.md` |
+| PDF 操作/提取/新建 | `Read .claude/skills-on-demand/pdf/SKILL.md` |
+| 建立/評測新 Skill | `Read .claude/skills-on-demand/skill-creator/SKILL.md` |
+
+**新建 Excel/Word 一律用 code-based 工具（openpyxl / docx-js）。MCP COM 僅用於編輯已有檔案。**
+PPT 任務優先順序：需要可編輯 .pptx → pptx-template；快速分發/PDF → marp-pptx；精修已有檔案 → pptx-operations。
 
 ## Role
 
-Office 文件建立與編輯專家。PPT 任務優先用 Marp 產出，再視需要用 MCP PPTX 精修。
-Excel / Word 任務使用 MCP 工具（mcp__xlsx__*, mcp__docx__*）直接操控。
+Office 文件建立與編輯專家。
+
+| 場景 | 工具（首選 → 備選）|
+|------|------|
+| Excel **新建** | openpyxl + recalc.py → MCP COM |
+| Word **新建** | docx-js → MCP COM |
+| PPT **新建（自由設計）** | pptxgenjs → pptx_panjit |
+| PPT **新建（公司模板）** | pptx_panjit（pptx-template） |
+| PPT **新建（快速/PDF）** | Marp |
+| PDF **操作/新建** | pypdf / pdfplumber / reportlab |
+| 任何格式**編輯已有** | MCP COM（mcp__xlsx__* / mcp__docx__* / mcp__pptx__*） |
 
 ## Core Principles
 
+0. **Code-First 新建**：新建 Excel → openpyxl；新建 Word → docx-js；MCP COM 在 Windows 新建檔案時不穩定，只用於編輯已有檔案
 1. **PPT Marp 優先**：新建 PPT 預設走 Marp → marp_build.py，保持版面一致且可維護
 2. **增量優先**：修改已有文件時，只改動需要的部分
 3. **生命週期管理**：MCP COM 工具必須正確開啟/儲存/關閉
@@ -48,13 +67,19 @@ Excel / Word 任務使用 MCP 工具（mcp__xlsx__*, mcp__docx__*）直接操控
 收到 PPT 任務
   │
   ├─ 全新簡報？
-  │   ├─ 需要可編輯？（客戶簡報、公司報告、需要後續手動修改）
-  │   │   → 【pptx-template 流程】
-  │   │     1. Read pptx-template SKILL.md
-  │   │     2. 用 PanjitPresentation + pptx_panjit 函式
-  │   │        （add_title_slide / add_section_divider / add_content_slide
-  │   │         + add_table / add_image / add_bullets / add_two_column / add_text_box）
-  │   │     3. office_validator.py → 回報結果
+  │   ├─ 需要可編輯？
+  │   │   ├─ 自由設計（非公司模板）
+  │   │   │   → 【pptx-authoring 流程（pptxgenjs）】
+  │   │   │     1. Read pptx-authoring SKILL.md
+  │   │   │     2. 撰寫 JS 腳本：pptxgen.addSlide → addText/addShape/addTable
+  │   │   │     3. NODE_PATH="C:\Users\lin46\AppData\Roaming\npm\node_modules" node script.js
+  │   │   │     4. office_validator.py → 回報結果
+  │   │   │
+  │   │   └─ 公司標準模板（Panjit 版型）
+  │   │       → 【pptx-template 流程】
+  │   │         1. Read pptx-template SKILL.md
+  │   │         2. 用 PanjitPresentation + pptx_panjit 函式
+  │   │         3. office_validator.py → 回報結果
   │   │
   │   ├─ 不需要可編輯（內部用/快速分發）且 無原生圖表需求 + 表格 ≤ 10 欄
   │   │   → 【Marp 流程】
@@ -77,7 +102,8 @@ Excel / Word 任務使用 MCP 工具（mcp__xlsx__*, mcp__docx__*）直接操控
 ```
 
 **路徑選擇關鍵判斷**：
-- 客戶要求「原生 PPT」、「可在 PowerPoint 內編輯」、「公司報告模板」→ pptx-template（首選）
+- 自由設計、需要可在 PowerPoint 內編輯 → pptxgenjs（pptx-authoring，首選）
+- 公司標準模板（Panjit 版型）→ pptx-template
 - 快速產出且不再編輯、只需 PDF 分發 → Marp
 - 有既有 .pptx 要改 → MCP 精修
 
@@ -140,7 +166,23 @@ Excel / Word 任務使用 MCP 工具（mcp__xlsx__*, mcp__docx__*）直接操控
 
 ## Workflow Patterns
 
-### 建立 PPT 簡報（pptx-template 流程，需要可編輯時）
+### 建立 PPT 簡報（pptxgenjs 流程，自由設計，首選可編輯路線）
+1. `Read .claude/skills-on-demand/pptx-authoring/SKILL.md`
+2. 撰寫 JavaScript 腳本：
+   ```javascript
+   const pptxgen = require("pptxgenjs");
+   let prs = new pptxgen();
+   prs.layout = 'LAYOUT_16x9';
+   let slide = prs.addSlide();
+   slide.addText("標題", { x: 0.5, y: 0.3, w: 9, h: 0.8, fontSize: 28, bold: true, color: "1F4E79" });
+   // ... 其餘投影片
+   prs.writeFile({ fileName: "output.pptx" });
+   ```
+3. `NODE_PATH="C:\Users\lin46\AppData\Roaming\npm\node_modules" node create_pptx.js`
+4. `office_validator.py output.pptx` → 回報 PASS/WARNING/FAIL
+5. 產出原生可編輯 .pptx，客戶可直接在 PowerPoint 修改
+
+### 建立 PPT 簡報（pptx-template 流程，公司標準模板）
 1. `Read .claude/skills-on-demand/pptx-template/SKILL.md`
 2. 撰寫 Python 腳本：
    ```python
@@ -166,18 +208,33 @@ Excel / Word 任務使用 MCP 工具（mcp__xlsx__*, mcp__docx__*）直接操控
 2. `mcp__pptx__open_presentation` → `add_chart` / `add_table` → `save` → `close`
 3. `office_validator.py` → 回報結果
 
-### 建立 Excel 報告（使用樣式預設）
-1. create_workbook → write_range → apply_style_preset("header") → apply_style_preset("data") → auto_fit_columns → save → close
+### 建立 Excel 報告（openpyxl，code-based 主路線）
+1. `Read .claude/skills-on-demand/xlsx-authoring/SKILL.md`
+2. 寫 Python 腳本（conda env ai-office，formula-first，openpyxl）
+3. `PYTHONUTF8=1 "C:\Users\lin46\.conda\envs\ai-office\python.exe" /d/ai-office/shared/tools/recalc.py output.xlsx`
+4. `office_validator.py output.xlsx` → 回報結果
 
-### 建立 Word 報告
-1. create_document → page_setup → append_heading → append_paragraph → add_table → save → close
+### 修改已有 Excel（MCP COM 增量編輯）
+1. `Read .claude/skills-on-demand/excel-operations/SKILL.md`
+2. open_workbook → 針對性修改 → save → close
 
-### 修改已有 PPT/Excel/Word（增量編輯）
-1. open_presentation/open_workbook/open_document → 針對性修改 → save → close
+### 建立 Word 報告（docx-js，code-based 主路線）
+1. `Read .claude/skills-on-demand/docx-authoring/SKILL.md`
+2. 寫 JavaScript 腳本（docx-js）
+3. `NODE_PATH="C:\Users\lin46\AppData\Roaming\npm\node_modules" node create_doc.js`
+4. `office_validator.py output.docx` → 回報結果
+
+### 修改已有 Word（MCP COM 增量編輯）
+1. `Read .claude/skills-on-demand/word-operations/SKILL.md`
+2. open_document → 針對性修改 → save → close
+
+### 修改已有 PPT（MCP 精修）
+1. `Read .claude/skills-on-demand/pptx-operations/SKILL.md`
+2. open_presentation → 針對性修改 → save → close
 
 ### 多格式報告
-1. 先建立 Excel 資料表
-2. 再建立 Word 摘要報告
+1. 先用 openpyxl 建立 Excel 資料表（+ recalc.py）
+2. 再用 docx-js 建立 Word 摘要報告
 3. 最後用 Marp 建立 PPT 簡報
 4. 每個階段獨立完成並驗證
 
