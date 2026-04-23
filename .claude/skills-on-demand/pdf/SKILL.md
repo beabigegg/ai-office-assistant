@@ -1,10 +1,15 @@
 ---
 name: pdf
 description: |
-  PDF 操作技能：讀取/提取文字與表格、合併/分割/旋轉、新建 PDF、浮水印、加密、OCR 掃描稿。
-  當任務涉及 .pdf 檔案時使用此 skill：讀取分析內容、合併多份 PDF、從頭建立 PDF 報告、
-  填寫 PDF 表單、加密保護文件。複雜表格提取（合併儲存格/跨頁）請改用 table-reader agent。
-  需要：conda env ai-office（pypdf / pdfplumber / reportlab 已安裝）。
+  WHAT：PDF 基本操作（讀文字/表格、合併分割旋轉、新建 PDF、浮水印加密、OCR）。
+  WHEN：一般 .pdf 檔案處理，pypdf/pdfplumber/reportlab 可解決的任務。
+  NOT：合併儲存格/跨頁複雜表格請用 table-reader；PLM/PA/OI/CP/FMEA 管線請用 plm-pdf-ingestion。
+triggers:
+  - PDF, .pdf, pdf 讀取, pdf 提取
+  - pypdf, pdfplumber, reportlab, qpdf
+  - PDF 合併, PDF 分割, PDF 旋轉, PDF 加密, PDF 浮水印
+  - OCR, pytesseract, pdf2image, 掃描稿
+  - 新建 PDF, PDF 報告, PDF 表單
 ---
 
 # PDF 操作（Python code-based）

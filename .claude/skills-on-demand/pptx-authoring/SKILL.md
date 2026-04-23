@@ -1,16 +1,17 @@
 ---
 name: pptx-authoring
 description: |
-  從零新建可編輯 .pptx 簡報（自由設計，非公司模板）。
-  使用 pptxgenjs（JavaScript）產生原生 PowerPoint 檔案：文字、形狀、圖表、圖片、子彈清單。
-  當需要從頭設計全新簡報、需要可在 PowerPoint 內直接編輯、且不受限於 Panjit 公司模板時使用。
-  從模板編輯現有 .pptx → 用 unpack/edit/pack 流程。
-  快速/PDF 分發 → marp-pptx skill。
-  精修已有 .pptx → pptx-operations skill。
-  需要：Node.js + pptxgenjs npm（NODE_PATH 必填）。
+  WHAT：用 pptxgenjs（Node.js）從零建立原生可編輯 .pptx（自由設計，非公司模板）。
+  WHEN：全新簡報設計、需在 PowerPoint 內直接編輯、不受公司模板限制、程式化生成。
+  NOT：公司標準模板請用 pptx-template；精修已有 .pptx 請用 pptx-operations；快速 PDF 分發請用 marp-pptx。
+triggers:
+  - pptxgenjs, pptx-js, Node.js PPT
+  - 新建 pptx, 從零建立簡報, 程式化簡報
+  - 自由設計, 非公司模板, 可編輯簡報
+  - unpack pack XML, slide.xml 編輯
 ---
 
-# PPTX 新建（pptxgenjs code-based）
+# PPTX 新建 — pptxgenjs 自由設計路線
 
 ## 環境
 

@@ -77,6 +77,16 @@
       "required_outputs": [],
       "validator": null,
       "validator_params": {}
+    },
+    {
+      "id": "refresh_kb_exports",
+      "description": "EVO-016: Regenerate .md exports from DB (DB is source of truth)",
+      "instruction": "Run: python shared/tools/kb.py export all. This rewrites shared/kb/decisions.md and shared/kb/dynamic/learning_notes.md from kb_index.db. Non-blocking; skip if no new decisions/learnings were added in this task.",
+      "depends_on": ["record_decisions", "record_knowledge"],
+      "required": false,
+      "required_outputs": [],
+      "validator": null,
+      "validator_params": {}
     }
   ]
 }

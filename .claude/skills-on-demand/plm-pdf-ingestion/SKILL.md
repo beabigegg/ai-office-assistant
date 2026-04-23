@@ -1,28 +1,16 @@
 ---
-id: skill-plm-pdf-ingestion
 name: plm-pdf-ingestion
-title: PLM PDF 文件擷取與解析策略
-version: 1.0
-status: active
-source: promoted-from-dynamic
-promoted_date: 2026-04-20
-confidence: high
 description: |
-  Aras Innovator PLM 文件抓取與 PDF 解析架構。適用於：
-  從 Aras Innovator 取得 PA/OI/CP/FMEA 等製程文件 PDF、
-  依文件類型選擇適當的 PDF 解析工具（Docling GPU / PyMuPDF / table-reader Agent）、
-  處理大型 PDF 的分批切割策略、中英文混排/字元級交織的表格處理。
-  當任務涉及 PLM 文件下載、OAuth ROPC 認證、SOAP 查詢、Vault PDF 下載、
-  Docling GPU 轉換、PyMuPDF find_tables、PDF 解析策略時觸發。
+  WHAT：Aras Innovator PLM 文件擷取 + PA/OI/CP/FMEA PDF 解析策略（Docling GPU vs PyMuPDF）。
+  WHEN：PLM OAuth ROPC、SOAP 查詢、Vault PDF 下載、大型 PDF 分批切割、字元級交織解析。
+  NOT：簡單 PDF 讀寫請用 pdf skill；非 PLM 視覺表格請用 table-reader。
 triggers:
   - PLM, Aras Innovator, OAuth ROPC, plm_fetch, Vault endpoint
-  - PDF 解析, PDF 入庫, PDF parsing, PDF extraction
-  - Docling, DOCLING, GPU 轉換, bad_alloc, CUDA, 分批切割
-  - PyMuPDF, fitz, find_tables, get_text
   - PA 文件, OI 文件, CP 文件, FMEA 文件, 製程分析
-  - hybrid_pdf_parser, ingest_pa, ingest_doc
-  - 表格提取, 合併儲存格, 字元級交織, 跨頁表格
-  - AIAG-VDA, table-reader
+  - Docling, GPU 轉換, bad_alloc, 分批切割, CHUNK_SIZE
+  - PyMuPDF, fitz, find_tables, hybrid_pdf_parser
+  - ingest_pa, ingest_doc, reingest_doc
+  - AIAG-VDA, 字元級交織, CJK interleaved
 ---
 
 # PLM PDF 文件擷取與解析策略

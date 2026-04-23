@@ -1,14 +1,17 @@
 ---
 name: xlsx-authoring
 description: |
-  openpyxl + pandas 新建 Excel 檔案的規則與最佳實踐。
-  新建 .xlsx 時首選此路線（比 MCP COM 更穩定）。
-  適用：從頭建立報告、資料輸出至 xlsx、工程數據表、成本分析。
-  **編輯已有 Excel 請用 excel-operations skill（MCP COM 增量編輯）**。
-  需要：conda env ai-office（openpyxl 已安裝）。
+  WHAT：用 openpyxl + pandas（code-based）從零新建 Excel 檔，強制公式優先、禁 hardcode 計算值。
+  WHEN：程式化產出 xlsx、工程數據表、成本分析、月報產出。
+  NOT：編輯已有 xlsx 請用 excel-operations（MCP COM 增量路線）。
+triggers:
+  - openpyxl, pandas to_excel, Excel 新建, xlsx 新建
+  - 從零建立 Excel, 程式化 Excel, code-based xlsx
+  - 公式優先, SUM, VLOOKUP, Excel 公式
+  - 月報, 成本分析, 工程數據表, 報告輸出
 ---
 
-# Excel 新建（openpyxl code-based）
+# Excel 新建 — openpyxl code-based 路線
 
 ## 環境
 

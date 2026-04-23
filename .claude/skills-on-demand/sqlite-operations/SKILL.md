@@ -1,13 +1,18 @@
 ---
 name: sqlite-operations
 description: |
-  Windows Git Bash 環境下 SQLite/Python 操作的防錯規則。適用於：
-  透過 python -c 或 Python 腳本操作 SQLite 資料庫時的正確模式、
-  Windows 編碼陷阱、引號衝突、型別安全。
-  當任務涉及 SQLite、SQL 查詢、python -c、.db 檔案時觸發。
+  WHAT：Windows Git Bash 環境下 SQLite / Python 操作的防錯規則（編碼/引號/型別）。
+  WHEN：寫 python -c 查 .db、寫 Python 腳本操作 SQLite、處理 UnicodeEncodeError。
+  NOT：查特定 DB schema 請用 db_schema.py；查知識 DB 請用 kb.py。
+triggers:
+  - SQLite, .db, sqlite3, python sqlite
+  - python -c, SQL 查詢, Windows cp950
+  - UnicodeEncodeError, UTF-8 編碼, 中文輸出
+  - row_factory, 參數化查詢, SQL 注入
+  - _tmp_query, 臨時腳本
 ---
 
-# SQLite 操作規則（Windows Git Bash）
+# SQLite 操作 — Windows Git Bash 防錯規則
 
 ## R1: 中文輸出必須強制 UTF-8
 

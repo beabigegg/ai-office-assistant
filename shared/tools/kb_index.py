@@ -1485,17 +1485,31 @@ class KBIndex:
 
 
 def main():
-    # Force UTF-8 output on Windows (use reconfigure to avoid double-flush)
+    """EVO-016 deprecation shim: delegate all CLI usage to kb.py."""
+    import subprocess as _subprocess
+    # Force UTF-8 on Windows
     if sys.platform == 'win32':
         try:
             sys.stdout.reconfigure(encoding='utf-8', errors='replace')
             sys.stderr.reconfigure(encoding='utf-8', errors='replace')
         except (AttributeError, OSError):
-            # Fallback for older Python
             sys.stdout = open(sys.stdout.fileno(), mode='w', encoding='utf-8', errors='replace', closefd=False)
             sys.stderr = open(sys.stderr.fileno(), mode='w', encoding='utf-8', errors='replace', closefd=False)
 
-    parser = argparse.ArgumentParser(description='Knowledge Base Index')
+    sys.stderr.write(
+        "[DEPRECATED] kb_index.py CLI is replaced by kb.py in EVO-016. "
+        "Forwarding to kb.py.\n"
+    )
+
+    kb_script = str(Path(__file__).resolve().parent / 'kb.py')
+    result = _subprocess.run(
+        [sys.executable, kb_script, *sys.argv[1:]],
+        cwd=str(Path(__file__).resolve().parent.parent.parent),
+    )
+    sys.exit(result.returncode)
+
+    # ── Below kept as no-op to keep byte-compat if anything still reaches here ──
+    parser = argparse.ArgumentParser(description='Knowledge Base Index (deprecated)')
     sub = parser.add_subparsers(dest='command')
 
     # sync

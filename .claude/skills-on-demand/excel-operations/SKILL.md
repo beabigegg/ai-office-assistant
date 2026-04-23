@@ -1,13 +1,17 @@
 ---
 name: excel-operations
 description: |
-  MCP Excel Server 操作規則與最佳實踐。適用於：
-  透過 mcp__xlsx__* 工具建立和編輯 Excel 試算表時的正確操作流程、
-  COM API 特性、日期處理、批次寫入模式、大範圍讀取限制。
-  當任務涉及 Excel、xlsx、試算表、mcp__xlsx、工作表 時觸發。
+  WHAT：透過 mcp__xlsx__* 工具（COM 自動化）對既有 Excel 做增量編輯。
+  WHEN：開啟/修改現有 xlsx、改儲存格、套樣式、寫圖表、conditional format。
+  NOT：從零建立新 xlsx 請用 xlsx-authoring（openpyxl code-based，更穩定）。
+triggers:
+  - Excel, xlsx, 試算表, 工作表, Sheet
+  - mcp__xlsx, COM, write_range, read_range, format_range
+  - apply_style_preset, add_borders, conditional_format
+  - 增量編輯, 儲存格, 日期格式, 凍結窗格
 ---
 
-# MCP Excel Server 操作規則
+# Excel 操作 — MCP COM 增量編輯路線
 
 ## 工具總覽（35 個）
 

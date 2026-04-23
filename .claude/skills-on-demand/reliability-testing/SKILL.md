@@ -133,7 +133,7 @@ WBP: Au/Al → M2037, Cu → Q006。WBS: Q101-003/B116。DS: M2017。TS: M2036 (
 
 ## ECR/ECN 變更驗證關鍵規則（2026-02-25 升級）
 
-> 來源：ECR-L06~L09, L11, L17, L26, L27 (learning_notes.md)
+> 來源：ECR-L06~L09, L11, L17, L26, L27 (kb.py read <ID>)
 > 驗證：使用者確認 + PDF 原文驗證
 
 ### VR1: Q006 是 Q101 的補充，不是替代 (Q006-SUPPLEMENT)
@@ -193,7 +193,7 @@ Die Attach 測試項目：A2●, A3●, A4●, A5●, C5●, C8●, C9●, E2●
 
 ## F-PE0404 廠內規範整合（2026-03-02 升級）
 
-> 來源：ECR-R25, STD-L04/L05/L06, ECR-L43/L44/L45 (learning_notes.md)
+> 來源：ECR-R25, STD-L04/L05/L06, ECR-L43/L44/L45 (kb.py read <ID>)
 > 驗證：F-PE0404-05 原文 + 使用者確認 D-091/D-094/D-095
 
 ### VR8: 規範優先序 — F-PE0404 → Q006 → Q101 (SPEC-PRIORITY)

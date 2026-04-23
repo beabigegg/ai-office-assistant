@@ -1,23 +1,18 @@
 ---
 name: pptx-template
 description: |
-  PANJIT 樣式 PPT 生成工具。適用於：
-  用 pptx_panjit.py 建立符合公司視覺標準的可編輯 PPTX 報告、
-  標題/表格/圖片/雙欄/callout 的標準版面、
-  semicon 色盤 (#1F4E79 深藍主色) 應用在 PowerPoint 元素。
-  當任務涉及可編輯 PPT、公司報告模板、PANJIT 簡報時觸發。
+  WHAT：用 pptx_panjit.py 生成符合 PANJIT 公司視覺標準的可編輯 PPTX（封面/章節/內容/雙欄/callout）。
+  WHEN：需符合公司企業版面、客戶要求可在 PowerPoint 內編輯、事後需手動微調的公司報告。
+  NOT：自由設計請用 pptx-authoring；PDF 分發或快速產出請用 marp-pptx；精修已有 pptx 請用 pptx-operations。
 triggers:
-  - pptx-template
-  - 可編輯ppt
-  - 可編輯PPT
-  - 公司報告
-  - pptx_panjit
-  - PANJIT簡報
-  - panjit pptx
-  - 原生 pptx
+  - pptx_panjit, PANJIT 簡報, panjit pptx, 公司報告模板
+  - semicon 色盤, 1F4E79, 企業標準版面
+  - add_title_slide, add_section_divider, add_content_slide
+  - add_two_column, add_text_box, add_bullets, add_image, add_table
+  - COLOR_PRIMARY, COLOR_SUCCESS, COLOR_WARNING, COLOR_DANGER
 ---
 
-# pptx_panjit — PANJIT 樣式可編輯 PPT
+# PPTX 公司模板 — pptx_panjit PANJIT 樣式路線
 
 ## T1：何時用 pptx_panjit vs Marp
 

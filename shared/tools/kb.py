@@ -705,28 +705,12 @@ def cmd_add_decision(args):
     _enqueue_for_edges(conn, node_id)
     conn.commit()
 
-    # ── Append to .md (export) ──
-    meta_parts = [f"status={meta.get('status', 'active')}", f"target={args.target}"]
-    for k in ['supersedes', 'refs_skill', 'refs_db', 'affects', 'review_by']:
-        if k in meta:
-            meta_parts.append(f"{k}={meta[k]}")
-    meta_line = f"<!-- kb: {', '.join(meta_parts)} -->"
-
-    md_block = f"\n### {node_id} -- {args.date} -- {args.project}\n{meta_line}\n{content_body}\n"
-
-    with open(DECISIONS_PATH, 'rb') as f:
-        f.seek(-1, 2)
-        last_byte = f.read(1)
-    with open(DECISIONS_PATH, 'a', encoding='utf-8') as f:
-        if last_byte != b'\n':
-            f.write('\n')
-        f.write(md_block)
-
+    # ── EVO-016: DB is source of truth; .md export happens at post_task end ──
     queue_size = conn.execute("SELECT COUNT(*) FROM pending_edge_queue").fetchone()[0]
     result = {
         "ok": True, "id": node_id,
         "db": str(DB_PATH.relative_to(ROOT)),
-        "md": str(DECISIONS_PATH.relative_to(ROOT)),
+        "hint_md": "Run `python shared/tools/kb.py export decisions` to refresh .md export.",
     }
     if queue_size >= 5:
         result["hint"] = f"edge_queue={queue_size}，建議執行 kb.py build-edges 自動補齊關聯邊"
@@ -772,25 +756,12 @@ def cmd_add_learning(args):
     _enqueue_for_edges(conn, node_id)
     conn.commit()
 
-    # ── Append to .md ──
-    md_block = (
-        f"\n### {node_id} {args.title} — {args.date}\n"
-        f"<!-- status: {args.status or 'active'} -->\n"
-        f"{content_body}\n"
-    )
-    with open(LEARNING_PATH, 'rb') as f:
-        f.seek(-1, 2)
-        last_byte = f.read(1)
-    with open(LEARNING_PATH, 'a', encoding='utf-8') as f:
-        if last_byte != b'\n':
-            f.write('\n')
-        f.write(md_block)
-
+    # ── EVO-016: DB is source of truth; .md export happens at post_task end ──
     queue_size = conn.execute("SELECT COUNT(*) FROM pending_edge_queue").fetchone()[0]
     result = {
         "ok": True, "id": node_id,
         "db": str(DB_PATH.relative_to(ROOT)),
-        "md": str(LEARNING_PATH.relative_to(ROOT)),
+        "hint_md": "Run `python shared/tools/kb.py export learning` to refresh .md export.",
     }
     if queue_size >= 5:
         result["hint"] = f"edge_queue={queue_size}，建議執行 kb.py build-edges 自動補齊關聯邊"
@@ -914,65 +885,17 @@ def cmd_export(args):
 # ═══════════════════════════════════════════════════════════
 
 def cmd_validate(args):
-    """Quick consistency checks on the knowledge base."""
-    conn = _get_conn()
-    _ensure_schema(conn)
-    issues = []
-
-    # 1. Sequential D-NNN check
-    d_ids = [int(re.match(r'D-(\d+)', r['id']).group(1))
-             for r in conn.execute("SELECT id FROM nodes WHERE node_type='decision' ORDER BY id").fetchall()
-             if re.match(r'D-(\d+)', r['id'])]
-    if d_ids:
-        expected = set(range(1, max(d_ids) + 1))
-        missing = expected - set(d_ids)
-        if missing:
-            issues.append(f"WARN: Missing decision IDs: {sorted(missing)[:10]}")
-
-    # 2. Superseded consistency
-    sup_edges = conn.execute("SELECT source_id, target_id FROM edges WHERE relation='supersedes'").fetchall()
-    for e in sup_edges:
-        old = conn.execute("SELECT status FROM nodes WHERE id=?", (e['target_id'],)).fetchone()
-        if old and old['status'] != 'superseded':
-            issues.append(f"WARN: {e['target_id']} superseded by {e['source_id']} but status={old['status']}")
-
-    # 3. Content coverage
-    no_content = conn.execute("SELECT COUNT(*) FROM nodes WHERE content IS NULL OR content=''").fetchone()[0]
-    total = conn.execute("SELECT COUNT(*) FROM nodes").fetchone()[0]
-    if no_content > 0:
-        issues.append(f"INFO: {no_content}/{total} nodes without content")
-
-    # 4. Expired TTL
-    today_str = datetime.now().strftime('%Y-%m-%d')
-    expired = conn.execute("""
-        SELECT id, meta_json FROM nodes
-        WHERE status='active' AND meta_json IS NOT NULL AND meta_json LIKE '%review_by%'
-    """).fetchall()
-    for e in expired:
-        try:
-            meta = json.loads(e['meta_json']) if e['meta_json'] else {}
-            rb = meta.get('review_by', '')
-            if rb and rb < today_str:
-                issues.append(f"WARN: {e['id']} TTL expired (review_by={rb})")
-        except (json.JSONDecodeError, TypeError):
-            pass
-
-    # 5. Orphan embeddings
-    orphan = conn.execute("""
-        SELECT COUNT(*) FROM node_embeddings WHERE node_id NOT IN (SELECT id FROM nodes)
-    """).fetchone()[0]
-    if orphan:
-        issues.append(f"WARN: {orphan} orphan embeddings")
-
-    if issues:
-        for i in issues:
-            print(i)
-        errors = sum(1 for i in issues if i.startswith('ERROR'))
-        print(f"\n{len(issues)} issues ({errors} errors)")
-        sys.exit(2 if errors else 0)
-    else:
-        print("OK: No issues found")
-    conn.close()
+    """Consistency checks (EVO-016: delegates to KBIndex.validate for full checks)."""
+    KBIndex = _get_kb_index()
+    kb = KBIndex()
+    try:
+        code = kb.validate(
+            quiet=getattr(args, 'quiet', False),
+            strict=getattr(args, 'strict', False),
+        )
+        sys.exit(code)
+    finally:
+        kb.close()
 
 
 # ═══════════════════════════════════════════════════════════
@@ -1937,8 +1860,86 @@ def cmd_tool_graph(args):
         sys.exit(1)
 
 
+# ═══════════════════════════════════════════════════════════
+# EVO-016: absorbed from kb_index.py
+# ═══════════════════════════════════════════════════════════
+
+def _get_kb_index():
+    """Lazy-load the KBIndex class from kb_index.py (co-located in shared/tools)."""
+    sys.path.insert(0, str(SCRIPT_DIR))
+    from kb_index import KBIndex
+    return KBIndex
+
+
+def cmd_sync(args):
+    """Sync .md files to SQLite index (EVO-016 absorbed from kb_index.py)."""
+    KBIndex = _get_kb_index()
+    kb = KBIndex()
+    try:
+        kb.sync(quiet=args.quiet)
+        if getattr(args, 'embed', False) or getattr(args, 'embed_force', False):
+            kb.sync_embeddings(force=args.embed_force, quiet=args.quiet)
+    finally:
+        kb.close()
+
+
+def cmd_generate_summary(args):
+    """Generate active_rules_summary.md from DB (EVO-016)."""
+    KBIndex = _get_kb_index()
+    kb = KBIndex()
+    try:
+        path, stats = kb.generate_active_summary(
+            output_path=getattr(args, 'output', None),
+            project=getattr(args, 'project', None),
+        )
+        print(f"Generated: {path}")
+        print(f"  Active decisions: {stats['active_decisions']}")
+        print(f"  Superseded: {stats['superseded_decisions']}")
+        print(f"  Active rules: {stats['active_rules']}")
+        print(f"  Output size: {stats['output_size']} chars")
+    finally:
+        kb.close()
+
+
+def cmd_generate_index(args):
+    """Generate shared/kb/_index.md (EVO-016)."""
+    KBIndex = _get_kb_index()
+    kb = KBIndex()
+    try:
+        path, stats = kb.generate_index(
+            output_path=getattr(args, 'output', None),
+        )
+        print(f"Generated: {path}")
+        print(f"  Skills: {stats['skills']}")
+        print(f"  Projects: {stats['projects']}")
+        print(f"  Tools: {stats['tools']}")
+        print(f"  Decisions: {stats['decisions']}")
+        print(f"  Output size: {stats['output_size']} chars")
+    finally:
+        kb.close()
+
+
+def cmd_check_conflict(args):
+    """L2 conflict check for a target text (EVO-016)."""
+    KBIndex = _get_kb_index()
+    kb = KBIndex()
+    try:
+        kb.sync(quiet=True)
+        conflicts = kb.check_conflict(args.target, threshold=args.threshold)
+        if conflicts:
+            print(f"POTENTIAL CONFLICTS for target '{args.target}':")
+            for did, target, score in conflicts:
+                print(f"  {did} | similarity={score} | {target}")
+            sys.exit(1)
+        else:
+            print(f"OK: No conflicts found for target '{args.target}'")
+            sys.exit(0)
+    finally:
+        kb.close()
+
+
 def main():
-    parser = argparse.ArgumentParser(description="Knowledge Base CLI (EVO-012)")
+    parser = argparse.ArgumentParser(description="Knowledge Base CLI (EVO-012, EVO-016)")
     sub = parser.add_subparsers(dest='command')
 
     sub.add_parser('catalog', help='Lightweight KB summary')
@@ -2001,8 +2002,10 @@ def main():
     p_exp = sub.add_parser('export', help='Export DB -> .md')
     p_exp.add_argument('target', choices=['decisions', 'learning', 'all'])
 
-    # validate
-    sub.add_parser('validate', help='Consistency checks')
+    # validate (EVO-016 extended)
+    p_val = sub.add_parser('validate', help='Consistency checks')
+    p_val.add_argument('--quiet', action='store_true')
+    p_val.add_argument('--strict', action='store_true')
 
     # trace
     p_trace = sub.add_parser('trace', help='Trace node relationships')
@@ -2043,6 +2046,23 @@ def main():
     p_mig.add_argument('--dry-run', action='store_true')
     p_mig.add_argument('--execute', action='store_true')
 
+    # EVO-016: absorbed from kb_index.py
+    p_sync = sub.add_parser('sync', help='Sync .md files to DB (EVO-016)')
+    p_sync.add_argument('--quiet', action='store_true')
+    p_sync.add_argument('--embed', action='store_true')
+    p_sync.add_argument('--embed-force', action='store_true')
+
+    p_gs = sub.add_parser('generate-summary', help='Generate active_rules_summary.md (EVO-016)')
+    p_gs.add_argument('--project', type=str, default=None)
+    p_gs.add_argument('--output', type=str, default=None)
+
+    p_gi = sub.add_parser('generate-index', help='Generate shared/kb/_index.md (EVO-016)')
+    p_gi.add_argument('--output', type=str, default=None)
+
+    p_cc = sub.add_parser('check-conflict', help='L2 conflict check for a target (EVO-016)')
+    p_cc.add_argument('target', type=str)
+    p_cc.add_argument('--threshold', type=float, default=0.4)
+
     args = parser.parse_args()
     cmd_map = {
         'catalog': cmd_catalog,
@@ -2062,6 +2082,11 @@ def main():
         'tool-graph': cmd_tool_graph,
         'import-snapshot': cmd_import_snapshot,
         'migrate': lambda a: cmd_migrate(a) if (a.dry_run or a.execute) else print("Specify --dry-run or --execute"),
+        # EVO-016: absorbed from kb_index.py
+        'sync': cmd_sync,
+        'generate-summary': cmd_generate_summary,
+        'generate-index': cmd_generate_index,
+        'check-conflict': cmd_check_conflict,
     }
     fn = cmd_map.get(args.command)
     if fn:

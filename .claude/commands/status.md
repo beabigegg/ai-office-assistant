@@ -9,7 +9,7 @@ description: |
 
 1. **專案清單**：列出 projects/ 下所有專案，各自的 vault 檔案數、DB 表數
 2. **知識庫統計**：
-   - .claude/skills/ 中有多少原生 Skill
+   - .claude/skills-on-demand/ 中有多少 Skill
    - shared/kb/dynamic/ 中有多少條動態知識
    - 接近升級的候選數量
 3. **工具清單**：shared/tools/ 中已註冊的工具
@@ -18,7 +18,7 @@ description: |
 
 步驟：
 - 讀 shared/kb/_index.md
-- 掃描 .claude/skills/ 目錄
+- 掃描 .claude/skills-on-demand/ 目錄
 - 掃描 shared/kb/dynamic/ 目錄
 - 掃描 projects/ 目錄
 - 讀 shared/kb/decisions.md 末尾

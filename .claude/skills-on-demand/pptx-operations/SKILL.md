@@ -1,13 +1,18 @@
 ---
 name: pptx-operations
 description: |
-  MCP PPTX Server v2 操作規則與最佳實踐。適用於：
-  透過 mcp__pptx__* 工具建立 PowerPoint 簡報時的正確操作流程、
-  COM API 限制規避、預設元素清理、圖表資料寫入模式。
-  當任務涉及 PPT、簡報、PowerPoint、mcp__pptx 時觸發。
+  WHAT：透過 mcp__pptx__* 工具（COM 自動化）精修已有 .pptx，處理原生圖表、複雜表格、版面調整。
+  WHEN：修改現有簡報、add_chart 原生可編輯圖表、20+ 欄 add_table、delete_shape 清理 placeholder。
+  NOT：從零新建簡報請用 pptx-authoring 或 pptx-template；Markdown 大量內容請用 marp-pptx。
+triggers:
+  - mcp__pptx, MCP PPTX, PPTX COM
+  - add_chart, add_table, add_rich_textbox, modify_shape
+  - delete_shape, duplicate_slide, merge_table_cells
+  - set_gradient_fill, set_slide_background
+  - 精修簡報, 編輯已有 pptx, 原生圖表
 ---
 
-# MCP PPTX Server v2 操作規則
+# PPTX 精修 — MCP COM 增量編輯路線
 
 ## 工具總覽（25 個）
 

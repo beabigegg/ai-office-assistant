@@ -1,22 +1,17 @@
 ---
 name: mes-report
-description: MES 報表下載、入庫與分析規則（SSRS URL Access）
+description: |
+  WHAT：MES（SSRS）報表透過 mes_report.py 走 NTLM 認證下載、入庫、分析。
+  WHEN：需要 PJMES/PJCMR 系列報表、Lot History、良率日報、Q-Time、CST 損耗、設備叫修紀錄。
 triggers:
-  - MES
-  - mes report
-  - PJMES
-  - PJCMR
-  - SSRS
-  - 報表下載
-  - lot history
-  - equipment jobs
-  - yield
-  - OEE
-  - traceability
-  - Q-Time
+  - MES, mes report, PJMES, PJCMR, SSRS
+  - mes_report.py, NTLM, Playwright, VPN
+  - Lot History, Equipment Jobs, Material History, Q-Time, OEE, Traceability
+  - PJMES002, PJMES007, PJMES022, PJMES023, PJMES068, PJCMR068
+  - 報表下載, 良率日報, CST 損耗, 站間管制時間
 ---
 
-# Skill: mes-report
+# MES 報表下載 — SSRS URL Access 路線
 
 MES (Manufacturing Execution System) 報表透過 SSRS URL Access API 下載。
 **必須連 VPN**（NTLM 模式，2026-03-30 確認：外部 DNS 記錄已由 IT 移除，Playwright 模式也需 VPN）。

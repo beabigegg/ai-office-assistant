@@ -1,14 +1,17 @@
 ---
 name: docx-authoring
 description: |
-  docx-js（JavaScript）新建 Word 文件，或 XML unpack/pack 精修既有文件。
-  新建 .docx 時首選此路線（比 MCP COM 更穩定，且支援 TOC、多欄、tracked changes、footnotes）。
-  適用：測試報告、分析文件、正式函文、需要精確格式控制的文件。
-  **簡單增量編輯（find_replace、改儲存格）請用 word-operations skill（MCP COM）**。
-  需要：Node.js + docx npm（已全域安裝於 C:\Users\lin46\AppData\Roaming\npm\node_modules）。
+  WHAT：用 docx-js（Node.js）從零新建 Word 文件，或 unpack/pack XML 精修既有文件。
+  WHEN：需要 TOC、多欄、tracked changes、footnotes、精確格式控制的正式 Word 文件。
+  NOT：簡單增量編輯（find_replace、改儲存格）請用 word-operations（MCP COM）。
+triggers:
+  - docx-js, docx npm, pptxgenjs 姊妹包, Node.js Word
+  - Word 新建, 報告 Word, 正式函文, 測試報告 docx
+  - TOC, 目錄, footnotes, 多欄, tracked changes, 頁首頁尾
+  - unpack pack XML, document.xml 編輯, OOXML
 ---
 
-# Word 新建（docx-js code-based）
+# Word 新建 — docx-js code-based 路線
 
 ## 環境
 

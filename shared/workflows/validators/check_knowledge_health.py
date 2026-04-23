@@ -12,7 +12,7 @@ from pathlib import Path
 def validate(context: dict) -> tuple:
     _default_root = Path(__file__).resolve().parent.parent.parent.parent
     root = Path(context.get('root', _default_root))
-    kb_script = str(root / 'shared' / 'tools' / 'kb_index.py')
+    kb_script = str(root / 'shared' / 'tools' / 'kb.py')
 
     try:
         env = dict(__import__('os').environ, PYTHONIOENCODING='utf-8')

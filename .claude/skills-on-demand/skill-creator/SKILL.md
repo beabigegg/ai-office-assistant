@@ -1,14 +1,17 @@
 ---
 name: skill-creator
 description: |
-  建立新 Skill、改善現有 Skill、評測 Skill 效能。
-  使用時機：從零建立新 skill、修改/優化現有 skill、
-  執行觸發率測試（run_eval / run_loop）、
-  執行輸出品質對比評估（grader / comparator / analyzer agent）、
-  對 skill description 做最佳化、閱覽 eval 結果報告。
+  WHAT：建立新 Skill、改善現有 Skill、執行觸發率與輸出品質評測。
+  WHEN：從零建立 skill、優化 description、run_eval/run_loop 觸發率測試、grader/comparator 品質對比。
+triggers:
+  - skill-creator, meta skill, 建立 skill, 新增 skill, 改善 skill
+  - run_eval, run_loop, generate_report, skill eval
+  - skill-eval-grader, skill-eval-comparator, skill-eval-analyzer
+  - description 優化, 觸發率測試, 輸出品質評估
+  - SKILL.md frontmatter, triggers 關鍵詞
 ---
 
-# Skill Creator（Meta-Skill）
+# Skill Creator — 建立與評測工具鏈
 
 腳本位於：`/d/ai-office/skill-creator/scripts/`
 eval 閱覽器：`/d/ai-office/skill-creator/eval-viewer/`

@@ -1,20 +1,17 @@
 ---
 name: mil-std-750
 description: |
-  MIL-STD-750 半導體離散元件測試方法標準完整知識庫。適用於：
-  查詢離散元件（二極體/電晶體/MOSFET/閘流體）的環境、機械、電氣測試方法、
-  判斷 AEC-Q101 引用的對應 MIL-STD-750 方法編號、
-  區分 MIL-STD-750（離散）與 MIL-STD-883（IC）的適用範圍。
-  當任務涉及 MIL-STD-750、離散元件測試方法、Die Shear、Bond Strength、
-  Temperature Cycling、HTRB、Burn-in、環境測試、電氣特性測試時觸發。
+  WHAT：MIL-STD-750 半導體離散元件測試方法標準完整知識庫。
+  WHEN：查 Die Shear/Bond Strength/Die Attach Void/Temperature Cycling/HTRB/Burn-in 方法編號、AEC-Q101 引用對照。
+  NOT：IC/微電路請改用 MIL-STD-883；可靠性驗證流程請用 reliability-testing。
 triggers:
-  - MIL-STD-750, MIL-STD-883, 離散元件測試, 測試方法
-  - Die Shear, M2017, Bond Strength, M2037, Bond Pull
-  - Die Attach Void, M2076, X-ray, 空洞率
-  - Terminal Strength, M2036, Temperature Cycling, M1051
-  - HTRB, M1038, M1039, Burn-in, 穩態壽命
-  - MOSFET測試, 二極體測試, 電晶體測試, 閘流體測試
-  - PIND, M2052, Hermetic Seal, M1071
+  - MIL-STD-750, MIL-STD-883, 離散元件測試, 測試方法, discrete test
+  - Die Shear M2017, Bond Strength M2037, Bond Pull
+  - Die Attach Void M2076, M2076.7, M3101, X-ray 空洞率
+  - Terminal Strength M2036, Temperature Cycling M1051
+  - HTRB M1038, M1039, Burn-in, 穩態壽命
+  - MOSFET 測試, 二極體測試, 電晶體測試, 閘流體測試
+  - PIND M2052, Hermetic Seal M1071
 ---
 
 # MIL-STD-750 — 半導體離散元件測試方法標準

@@ -1,18 +1,19 @@
 ---
 name: questionnaire-response
+description: |
+  WHAT：Leader 主導的客戶封裝製程問卷自動回覆流程（解析→分類→檢索→生成→Excel→回饋入庫）。
+  WHEN：收到客戶 CSR/CQR/PQR/CTPP/Cu Wire Risk Assessment 問卷、稽核表、Self-Assessment。
+  NOT：單題簡單問答請 Leader 直接處理，不必跑全流程。
 triggers:
-  - 客戶問卷
-  - 問卷回覆
-  - CSR review
-  - questionnaire
-  - 回覆客戶
-  - CQR
-  - PQR
-  - customer audit
-  - 稽核回覆
+  - 客戶問卷, 問卷回覆, questionnaire, CSR review, CQR, PQR
+  - customer audit, 稽核回覆, self-assessment, scoring levels
+  - 回覆客戶, 草稿回覆, 策略建議
+  - qa_pairs, qar_embed, qar_search
+  - FULL_COMPLY, PARTIAL_COMPLY, ALT_JUSTIFY, ADVOCATE_CURRENT, DECLARE_GAP
+  - Cu wire risk, bonding technology, CTPP, Qual Matrix
 ---
 
-# 客戶問卷自動回覆流程
+# 客戶問卷回覆 — Leader 主導流程
 
 > Leader 主導的工作流程。收到客戶封裝製程問卷時按此步驟操作。
 

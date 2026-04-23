@@ -5,7 +5,7 @@
     {
       "id": "classify_knowledge",
       "description": "Classify incoming knowledge: official doc → skills/external, inference → dynamic. Read checklist and report classification basis.",
-      "instruction": "Read checklist: shared/workflows/checklists/knowledge_lifecycle__classify_knowledge.yaml. Classification rules: (1) Official doc / user-confirmed fact → .claude/skills-on-demand/ OR shared/kb/external/; (2) Inference / single case / observed pattern → shared/kb/dynamic/ (requires status: active marker). Submit checklist_responses with classification basis for each item.",
+      "instruction": "Read checklist: shared/workflows/checklists/knowledge_lifecycle__classify_knowledge.yaml. Classification rules: (1) Official doc / user-confirmed fact → .claude/skills-on-demand/ (走 /promote 升級路徑); (2) Inference / single case / observed pattern → kb.py add-learning (DB is source of truth; dynamic/*.md are auto-generated exports). Submit checklist_responses with classification basis for each item.",
       "depends_on": [],
       "required": true,
       "required_outputs": [],
@@ -14,8 +14,8 @@
     },
     {
       "id": "write_to_dynamic",
-      "description": "Write knowledge to shared/kb/dynamic/ with proper format. New entries in learning_notes.md MUST include <!-- status: active --> marker.",
-      "instruction": "For decisions: python shared/tools/kb.py add-decision --id D-NNN ... For learnings: python shared/tools/kb.py add-learning --id <prefix>-LNN --title '...' --date YYYY-MM-DD --content '...' --confidence high|medium|low. New entries in shared/kb/dynamic/*.md MUST include <!-- status: active --> marker (validator enforces). kb.py writes to both DB (source of truth) and .md (export).",
+      "description": "Write knowledge to kb_index.db via kb.py (source of truth). M2 validator checks status field in DB, not .md marker.",
+      "instruction": "For decisions: python shared/tools/kb.py add-decision --id D-NNN ... For learnings: python shared/tools/kb.py add-learning --id <prefix>-LNN --title '...' --date YYYY-MM-DD --content '...' --confidence high|medium|low. EVO-016: kb.py writes DB only; .md export refreshed by post_task refresh_kb_exports node or `kb.py export all`. M2 validator reads DB status field.",
       "depends_on": ["classify_knowledge"],
       "required": true,
       "required_outputs": [

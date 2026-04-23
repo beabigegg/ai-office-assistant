@@ -1,44 +1,20 @@
 ---
+name: graph-rag
+description: |
+  WHAT：查詢製程分析 Knowledge Graph（FMEA/CP/OI 實體關聯圖），走 graph_query.py。
+  WHEN：問失效原因/預防/偵測、跨站比較、影響分析、路徑追溯、覆蓋 gap 分析。
+  NOT：若要查 decisions/learning 語意走 kb.py search；若要查 SQL 結構走 SCHEMA 檔。
 triggers:
-  - 失效模式
-  - 失效原因
-  - 預防措施
-  - 偵測措施
-  - 影響分析
-  - 跨站比較
-  - 1610
-  - 1620
-  - 頂針
-  - 吸嘴
-  - 腳架
-  - 晶片
-  - 膠材
-  - X-RAY
-  - MES
-  - 管制
-  - gap
-  - 追溯
-  - 防護鏈
-  - 知識圖譜
-  - GraphRAG
-  - knowledge graph
-  - entity
-  - relation
-  - failure mode
-  - failure cause
-  - prevention
-  - detection
-  - impact
-  - 設備故障
-  - 物料影響
-  - 會影響什麼
-  - 怎麼管
-  - 怎麼偵測
-  - 誰預防
-  - 有哪些
+  - GraphRAG, knowledge graph, 知識圖譜, graph_query
+  - 失效模式, failure mode, 失效原因, failure cause
+  - 預防措施, prevention, 偵測措施, detection, 影響分析
+  - 1610, 1620, Eutectic, Epoxy, Die Bond
+  - 頂針, 吸嘴, 腳架, 晶片, 膠材, X-RAY
+  - 跨站比較, 物料影響, 管制覆蓋, gap 分析, 路徑查詢
+  - trace, impact, compare, related, path, gaps, search
 ---
 
-# Knowledge Graph / GraphRAG 查詢
+# Knowledge Graph 查詢 — GraphRAG 入口
 
 ## 概述
 

@@ -1,43 +1,44 @@
 """Validator: check_dynamic_kb_status
-M2: Ensures new entries in learning_notes.md have a <!-- status: active --> marker.
-Checks only the last 3 entries (most recently added).
+M2 (EVO-016): Ensures the last 3 learning entries in kb_index.db have a valid
+status value (active | promoted | obsolete). DB is the source of truth.
 """
-import re
+import sqlite3
 from pathlib import Path
 
 
 def validate(context: dict) -> tuple:
     _default_root = Path(__file__).resolve().parent.parent.parent.parent
     root = Path(context.get('root', _default_root))
-    learning_path = root / 'shared' / 'kb' / 'dynamic' / 'learning_notes.md'
+    db_path = root / 'shared' / 'kb' / 'knowledge_graph' / 'kb_index.db'
 
-    if not learning_path.exists():
-        return True, "learning_notes.md not found, skipped"
+    if not db_path.exists():
+        return True, "kb_index.db not found, skipped"
 
-    content = learning_path.read_text(encoding='utf-8')
-    blocks = re.split(r'(?=^### .+)', content, flags=re.MULTILINE)
+    conn = sqlite3.connect(str(db_path))
+    conn.row_factory = sqlite3.Row
+    try:
+        rows = conn.execute(
+            "SELECT id, target, status FROM nodes "
+            "WHERE node_type='learning' ORDER BY id DESC LIMIT 3"
+        ).fetchall()
 
-    # Check last 3 entries for status marker
-    entry_blocks = [b for b in blocks if re.match(r'^### ', b)]
-    if not entry_blocks:
-        return True, "no entries found"
+        if not rows:
+            return True, "no learning entries in DB"
 
-    recent = entry_blocks[-3:]
-    missing = []
-    for block in recent:
-        title_match = re.match(r'^### (.+?)(?:\s*—|\s*$)', block)
-        title = title_match.group(1).strip()[:40] if title_match else '?'
+        valid_status = {'active', 'promoted', 'obsolete'}
+        missing = []
+        for r in rows:
+            status = (r['status'] or '').strip().lower()
+            if status not in valid_status:
+                label = (r['target'] or r['id'])[:40]
+                missing.append(f"{r['id']}({label}) status={r['status']!r}")
 
-        has_explicit_status = bool(re.search(r'<!--\s*status:\s*(active|promoted|obsolete)\s*-->', block))
-        has_promoted_tag = '[PROMOTED]' in block
+        if missing:
+            return False, (
+                f"M2: Recent learning entries have invalid status: "
+                f"{'; '.join(missing)}. Fix via kb.py update <ID> --status active."
+            )
 
-        if not has_explicit_status and not has_promoted_tag:
-            missing.append(title)
-
-    if missing:
-        return False, (
-            f"M2: Recent learning_notes entries missing <!-- status: active --> marker: "
-            f"{', '.join(missing)}. Add the marker to each entry header block."
-        )
-
-    return True, f"M2: last {len(recent)} entries have status markers"
+        return True, f"M2: last {len(rows)} learning entries have valid status"
+    finally:
+        conn.close()

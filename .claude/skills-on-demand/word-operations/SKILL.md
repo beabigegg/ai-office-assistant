@@ -1,13 +1,18 @@
 ---
 name: word-operations
 description: |
-  MCP Word Server 操作規則與最佳實踐。適用於：
-  透過 mcp__docx__* 工具建立和編輯 Word 文件時的正確操作流程、
-  COM Range.Find 跨 run 搜尋取代、段落索引規則、表格操作、書籤功能。
-  當任務涉及 Word、docx、文件、報告、mcp__docx 時觸發。
+  WHAT：透過 mcp__docx__* 工具（COM 自動化）對既有 Word 做增量編輯。
+  WHEN：開啟/修改 .docx、find_replace 跨 run 搜尋取代、段落索引操作、書籤 write_at_bookmark。
+  NOT：從零建立 Word 請用 docx-authoring（docx-js code-based，支援 TOC/footnotes）。
+triggers:
+  - Word, docx, 文件, 報告
+  - mcp__docx, MCP Word, Word COM
+  - find_replace, write_at_bookmark, append_paragraph
+  - add_table, format_table_cell, merge_table_cells
+  - add_header_footer, page_setup, apply_style
 ---
 
-# MCP Word Server 操作規則
+# Word 操作 — MCP COM 增量編輯路線
 
 ## 工具總覽（30 個）
 

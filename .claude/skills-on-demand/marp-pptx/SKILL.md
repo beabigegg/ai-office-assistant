@@ -1,20 +1,17 @@
 ---
 name: marp-pptx
 description: |
-  Marp Markdown → PPTX 生成規則。適用於：
-  用 Marp 語法撰寫簡報 Markdown、調用 marp_build.py 產出 PPTX/PDF、
-  使用 semicon.css 主題的版面配置（cards、callout、cols 等 CSS class）、
-  決定何時用 Marp vs MCP PPTX 精修的分工邏輯。
-  當任務涉及 Marp、marp-pptx、marp_build、Markdown 簡報時觸發。
+  WHAT：用 Marp Markdown 生成 PPTX/PDF，走 marp_build.py + semicon.css 主題。
+  WHEN：標題/目錄/摘要頁、KPI callout、雙欄、Markdown 大量內容轉簡報、PDF 分發。
+  NOT：客戶可編輯的原生圖表、20+ 欄表格、公司模板請用 pptx-template 或 pptx-operations。
 triggers:
-  - marp
-  - markdown簡報
-  - marp-pptx
-  - 簡報md
-  - marp_build
+  - Marp, marp-pptx, marp_build, marp markdown
+  - Markdown 簡報, 簡報 md, md to pptx
+  - semicon 主題, cards, callout, cols, CSS class
+  - PDF 分發, 快速簡報, matplotlib 圖表嵌入
 ---
 
-# Marp PPTX 生成規則
+# Marp 簡報生成 — Markdown to PPTX 路線
 
 ## 工作流程
 
