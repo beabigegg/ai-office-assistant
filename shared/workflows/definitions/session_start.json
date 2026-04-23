@@ -4,8 +4,8 @@
   "nodes": [
     {
       "id": "read_project_state",
-      "description": "Read {P}/workspace/project_state.md to restore session context",
-      "instruction": "Read {P}/workspace/project_state.md. Confirm project type from first line (<!-- type: knowledge|project_management -->). Set {P} for this session. Summarize to user: 當前階段, 活躍任務 count, 未解問題 count, 資料庫現況.",
+      "description": "Read {PROJECT_ROOT}/workspace/project_state.md to restore session context",
+      "instruction": "Read {PROJECT_ROOT}/workspace/project_state.md. Confirm project type from first line (<!-- type: knowledge|project_management -->). Set {PROJECT_ID} for this session. Summarize to user: 當前階段, 活躍任務 count, 未解問題 count, 資料庫現況.",
       "depends_on": [],
       "required": true,
       "required_outputs": [
@@ -27,7 +27,7 @@
     {
       "id": "load_project_backlog",
       "description": "If project has backlog.db (project_management type), run backlog.py summary and remind to show open P0/P1, blocked, and stale items. Skipped for knowledge-type projects.",
-      "instruction": "Only if project type is 'project_management': run python shared/tools/backlog.py --project {P} summary, then python shared/tools/backlog.py --project {P} remind. Report open P0/P1, blocked, stale items. Skip entirely for 'knowledge' type projects.",
+      "instruction": "Only if project type is 'project_management': run bash shared/tools/conda-python.sh shared/tools/backlog.py --project {PROJECT_ID} summary, then bash shared/tools/conda-python.sh shared/tools/backlog.py --project {PROJECT_ID} remind. Report open P0/P1, blocked, stale items. Skip entirely for 'knowledge' type projects.",
       "depends_on": ["read_project_state"],
       "required": false,
       "required_outputs": [],
@@ -37,7 +37,7 @@
     {
       "id": "check_knowledge_health",
       "description": "Run kb_index.py validate to detect expired TTL, supersede inconsistencies, and semantic conflicts. Report any WARN/ERROR to user.",
-      "instruction": "Run: python shared/tools/kb.py validate. Report any ERROR or WARN entries to user. Do not block session on WARN-only results. ERROR entries require user acknowledgment.",
+      "instruction": "Run: bash shared/tools/conda-python.sh shared/tools/kb.py validate --warn-exit-zero. Report any ERROR or WARN entries to user. Do not block session on WARN-only results. ERROR entries require user acknowledgment.",
       "depends_on": ["read_project_state"],
       "required": false,
       "required_outputs": [],
@@ -47,7 +47,7 @@
     {
       "id": "diff_db",
       "description": "Check DB for changes since last session (new tables, row counts)",
-      "instruction": "If {P}/workspace/db/*.db exists: run python shared/tools/db_schema.py show <db_path> --compact. Compare row counts with project_state.md 資料庫現況 block. Note any new tables or row count changes >10%.",
+      "instruction": "If {PROJECT_ROOT}/workspace/db/*.db exists: run bash shared/tools/conda-python.sh shared/tools/db_schema.py show <db_path> --compact. Compare row counts with project_state.md 資料庫現況 block. Note any new tables or row count changes >10%.",
       "depends_on": ["read_project_state"],
       "required": false,
       "required_outputs": [],
@@ -57,7 +57,7 @@
     {
       "id": "flag_open_questions",
       "description": "Identify and flag open questions from project_state.md",
-      "instruction": "Read '## 未解問題' section from project_state.md. If project_management type, also run: python shared/tools/backlog.py --project {P} list --status blocked. List all open questions clearly.",
+      "instruction": "Read '## 未解問題' section from project_state.md. If project_management type, also run: bash shared/tools/conda-python.sh shared/tools/backlog.py --project {PROJECT_ID} list --status blocked. List all open questions clearly.",
       "depends_on": ["read_project_state"],
       "required": false,
       "required_outputs": [],
@@ -67,7 +67,7 @@
     {
       "id": "report_ready",
       "description": "Report session ready status to user with context summary",
-      "instruction": "Report in 3-5 bullet points: project type + {P}, 當前階段, active task count, open question count, KB health status, DB status. End with: 就緒，等待指示。",
+      "instruction": "Report in 3-5 bullet points: project type + {PROJECT_ID}, 當前階段, active task count, open question count, KB health status, DB status. End with: 就緒，等待指示。",
       "depends_on": ["read_project_state"],
       "required": true,
       "required_outputs": [],

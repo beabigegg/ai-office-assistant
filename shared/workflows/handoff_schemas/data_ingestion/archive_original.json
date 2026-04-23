@@ -1,13 +1,13 @@
 {
   "node": "archive_original",
-  "description": "Archive the original source file into {P}/vault/originals/ with a stable filename. This is a pure file-move step; no parsing or interpretation.",
+  "description": "Archive the original source file into {PROJECT_ROOT}/vault/originals/ with a stable filename. This is a pure file-move step; no parsing or interpretation.",
   "input_schema": {
     "type": "object",
     "required": ["project", "source_path"],
     "properties": {
       "project": {
         "type": "string",
-        "description": "Project name, e.g. 'ecr-ecn'. Used to derive {P} = projects/{project}/"
+        "description": "Canonical project id, e.g. 'ecr-ecn'. Used to derive {PROJECT_ROOT} = projects/{project}/"
       },
       "source_path": {
         "type": "string",
@@ -29,7 +29,7 @@
     "properties": {
       "archived_path": {
         "type": "string",
-        "description": "Absolute path inside {P}/vault/originals/ after archiving. Must contain the literal segment 'vault/originals/' to satisfy workflow required_outputs."
+        "description": "Absolute path inside {PROJECT_ROOT}/vault/originals/ after archiving. Must contain the literal segment 'vault/originals/' to satisfy workflow required_outputs."
       },
       "archived_size_bytes": {
         "type": "integer",

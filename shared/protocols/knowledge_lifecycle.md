@@ -1,5 +1,7 @@
 # 知識生命週期管理 v1.0
 
+> Status: runtime authority for KB lifecycle. If this file conflicts with older notes,
+> this file and `shared/kb/kb_status_spec.md` win.
 > 定義 Agent Office 中知識的建立、成熟、升級、老化與清理策略。
 > Learner 和 Promoter 共同遵守此協議。
 
@@ -13,7 +15,7 @@
                 │                    │                  │
                 │ 180天無引用         │ 180天無引用       │ SKILL.md 更新
                 ▼                    ▼                  ▼
-            [stale]              [stale]           [native_skill]
+            [stale]              [stale]           [skills-on-demand]
                 │                    │
                 │ 使用者確認          │ 使用者確認
                 ▼                    ▼
@@ -27,10 +29,10 @@
 | `draft` | `shared/kb/dynamic/` | 新建立的知識，單次觀察，未驗證 |
 | `active` | `shared/kb/dynamic/` | 正在使用中，至少被引用 1 次 |
 | `mature` | `shared/kb/dynamic/` | 已驗證 2+ 次，穩定度高，待升級 |
-| `promoted` | `.claude/skills/` | 已升級為原生 Skill |
+| `promoted` | `kb_index.db` / export | 已通過升級審查，知識本體保留於 KB |
 | `stale` | `shared/kb/dynamic/` | 超過 180 天未被引用或驗證 |
 | `archived` | `shared/kb/dynamic/archive/` | 已退役，保留供追溯 |
-| `native_skill` | `.claude/skills/` | 完整原生 Skill，Claude Code 自動發現 |
+| `skills-on-demand` | `.claude/skills-on-demand/` | Claude Code 實際使用的 Skill 載體，不是 KB status |
 
 ## TTL（存活期限）規則
 
@@ -44,13 +46,22 @@
 | 學習筆記（learning_notes.md）| 180 天 | 升級為 Skill 後移除 | 標記 stale |
 | 外部知識（external/）| 365 天 | 官方文件更新版本時 | 標記版本過期 |
 
-### Layer 1 知識（.claude/skills/）
+### Layer 1 知識（.claude/skills-on-demand/）
 
 | 知識類型 | TTL | 更新策略 |
 |---------|-----|---------|
 | SKILL.md | 無限 | Promoter 或 Learner 主動更新 |
 | .skill.yaml | 無限 | 和 SKILL.md 同步更新 |
 | references/ | 無限 | 追加式更新 |
+
+## Runtime Status 規格
+
+現行系統允許的狀態以 `shared/kb/kb_status_spec.md` 為準：
+
+- decision：`active | superseded`
+- learning：`draft | active | mature | promoted | stale | archived`
+
+`native_skill`、`obsolete`、`deprecated` 僅作為舊文件詞彙，不作為新資料寫入值。
 
 ## 清理策略
 

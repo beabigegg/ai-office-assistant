@@ -3,11 +3,18 @@ Verifies that backlog.db was updated after a task completion for project_managem
 For knowledge-type projects, always passes.
 """
 from pathlib import Path
+import sys
+
+WORKFLOWS_DIR = Path(__file__).resolve().parents[1]
+if str(WORKFLOWS_DIR) not in sys.path:
+    sys.path.insert(0, str(WORKFLOWS_DIR))
+
+from project_ref import normalize_project_id, project_db_dir, project_workspace
 
 
 def validate(context: dict) -> tuple:
     root = Path(context.get('root', Path(__file__).resolve().parents[3]))
-    project = context.get('project', '')
+    project = normalize_project_id(context.get('project', ''))
     params = context.get('params', {})
     required_for_type = params.get('required_for_type', 'project_management')
 
@@ -15,7 +22,7 @@ def validate(context: dict) -> tuple:
         return True, "no project context, skip backlog sync check"
 
     # Detect project type from project_state.md
-    state_file = root / 'projects' / project / 'workspace' / 'project_state.md'
+    state_file = project_workspace(root, project) / 'project_state.md'
     if state_file.exists():
         content = state_file.read_text(encoding='utf-8', errors='replace')
         is_pm = (
@@ -29,12 +36,13 @@ def validate(context: dict) -> tuple:
         return True, f"project '{project}' is knowledge-type, backlog sync not required"
 
     # Check backlog.db exists
-    backlog_db = root / 'projects' / project / 'workspace' / 'db' / 'backlog.db'
+    backlog_db = project_db_dir(root, project) / 'backlog.db'
     if not backlog_db.exists():
         if is_pm:
             return True, (
                 f"WARN: project '{project}' is project_management type but has no backlog.db yet. "
-                "Run: python shared/tools/backlog.py add --title '...' to initialize."
+                f"Run: bash shared/tools/conda-python.sh shared/tools/backlog.py "
+                f"--project {project} add --title '...' to initialize."
             )
         return True, "no backlog.db, skip"
 
@@ -44,7 +52,8 @@ def validate(context: dict) -> tuple:
     if age > 3600:
         return True, (
             f"WARN: backlog.db last updated {int(age/60)}m ago. "
-            "Did you update action items? Run: python shared/tools/backlog.py list --status open"
+            f"Did you update action items? Run: bash shared/tools/conda-python.sh "
+            f"shared/tools/backlog.py --project {project} list --status open"
         )
 
     return True, f"backlog.db updated {int(age)}s ago"

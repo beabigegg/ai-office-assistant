@@ -1,6 +1,7 @@
-"""Validator: check_dynamic_kb_status
-M2 (EVO-016): Ensures the last 3 learning entries in kb_index.db have a valid
-status value (active | promoted | obsolete). DB is the source of truth.
+"""Validator: check_dynamic_kb_status.
+
+Ensures recently written learning entries use the runtime-supported learning
+status set. DB is the source of truth.
 """
 import sqlite3
 from pathlib import Path
@@ -17,15 +18,28 @@ def validate(context: dict) -> tuple:
     conn = sqlite3.connect(str(db_path))
     conn.row_factory = sqlite3.Row
     try:
-        rows = conn.execute(
-            "SELECT id, target, status FROM nodes "
-            "WHERE node_type='learning' ORDER BY id DESC LIMIT 3"
-        ).fetchall()
+        requested_ids = context.get('outputs', {}).get('kb_entry_ids', [])
+        if isinstance(requested_ids, str):
+            requested_ids = [requested_ids]
+
+        if requested_ids:
+            placeholders = ",".join("?" for _ in requested_ids)
+            rows = conn.execute(
+                f"SELECT id, target, status FROM nodes "
+                f"WHERE node_type='learning' AND id IN ({placeholders}) "
+                f"ORDER BY id DESC",
+                requested_ids,
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT id, target, status FROM nodes "
+                "WHERE node_type='learning' ORDER BY id DESC LIMIT 3"
+            ).fetchall()
 
         if not rows:
             return True, "no learning entries in DB"
 
-        valid_status = {'active', 'promoted', 'obsolete'}
+        valid_status = {'draft', 'active', 'mature', 'promoted', 'stale', 'archived'}
         missing = []
         for r in rows:
             status = (r['status'] or '').strip().lower()
@@ -36,9 +50,10 @@ def validate(context: dict) -> tuple:
         if missing:
             return False, (
                 f"M2: Recent learning entries have invalid status: "
-                f"{'; '.join(missing)}. Fix via kb.py update <ID> --status active."
+                f"{'; '.join(missing)}. Fix via kb.py update <ID> --status <allowed-learning-status>."
             )
 
-        return True, f"M2: last {len(rows)} learning entries have valid status"
+        scope = "requested" if requested_ids else "recent"
+        return True, f"M2: {scope} learning entries have valid status"
     finally:
         conn.close()

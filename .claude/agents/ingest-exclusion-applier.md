@@ -38,7 +38,7 @@ memory: project
   - `custom` → Leader 提供的 predicate
 - 處理 Excel 合併儲存格：比對前先 unmerge + forward-fill
 - 產生 `operation_id`（格式 `YYYYMMDD_HHMMSS_<project>_<8char-hex>`）
-- 過濾後資料寫入 `{P}/workspace/_ingest_filtered_<operation_id>.parquet`（或 csv fallback）
+- 過濾後資料寫入 `{PROJECT_ROOT}/workspace/_ingest_filtered_<operation_id>.parquet`（或 csv fallback）
 - 輸出 `exclusion_summary`（每條規則命中幾筆 + ≤5 個樣本 key）
 - 在 `warnings` 中提示可疑樣態（-AU 後綴出現、找不到 part_number 欄位、digit2=Z 需人工確認）
 
@@ -64,7 +64,7 @@ python shared/workflows/coordinator.py complete apply_exclusions \
 
 ## 執行規範
 
-1. Python 腳本寫在 `{P}/workspace/scripts/_apply_excl_<operation_id>.py`，跑完即刪
+1. Python 腳本寫在 `{PROJECT_ROOT}/workspace/scripts/_apply_excl_<operation_id>.py`，跑完即刪
 2. Windows 中文輸出先 `sys.stdout.reconfigure(encoding='utf-8')`
 3. part-number 欄位偵測：先用 policy 的 `part_number_columns`；空則用 heuristic（欄名含 `part_number` / `part_no` / `pn` / `item_no`）
 4. 過濾後資料集寫 parquet（pyarrow），若無 pyarrow fallback UTF-8 CSV

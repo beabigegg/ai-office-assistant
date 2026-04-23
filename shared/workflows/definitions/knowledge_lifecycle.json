@@ -15,11 +15,11 @@
     {
       "id": "write_to_dynamic",
       "description": "Write knowledge to kb_index.db via kb.py (source of truth). M2 validator checks status field in DB, not .md marker.",
-      "instruction": "For decisions: python shared/tools/kb.py add-decision --id D-NNN ... For learnings: python shared/tools/kb.py add-learning --id <prefix>-LNN --title '...' --date YYYY-MM-DD --content '...' --confidence high|medium|low. EVO-016: kb.py writes DB only; .md export refreshed by post_task refresh_kb_exports node or `kb.py export all`. M2 validator reads DB status field.",
+      "instruction": "For decisions: bash shared/tools/conda-python.sh shared/tools/kb.py add-decision --id D-NNN ... For learnings: bash shared/tools/conda-python.sh shared/tools/kb.py add-learning --id <prefix>-LNN --title '...' --date YYYY-MM-DD --content '...' --confidence high|medium|low [--status draft|active|mature|promoted|stale|archived]. EVO-016: kb.py writes DB only; .md export refreshed by post_task refresh_kb_exports node or `kb.py export all`. When completing this node, pass `kb_entry_ids` in outputs so M2 validator checks the exact DB rows written this round.",
       "depends_on": ["classify_knowledge"],
       "required": true,
       "required_outputs": [
-        {"path_contains": "shared/kb/dynamic/", "description": "knowledge written to dynamic KB"}
+        {"output_key": "kb_entry_ids", "description": "KB entry ids written to DB"}
       ],
       "validator": "check_dynamic_kb_status",
       "validator_params": {}
@@ -27,7 +27,7 @@
     {
       "id": "sync_knowledge_index",
       "description": "Sync dynamic KB changes to kb_index.db after writing",
-      "instruction": "Run: python shared/tools/kb.py build-edges. This updates knowledge graph edges after new nodes added. Optionally: python shared/tools/kb.py validate to check consistency.",
+      "instruction": "Run: bash shared/tools/conda-python.sh shared/tools/kb.py build-edges. This updates knowledge graph edges after new nodes added. Optionally: bash shared/tools/conda-python.sh shared/tools/kb.py validate --warn-exit-zero to check consistency.",
       "depends_on": ["write_to_dynamic"],
       "required": false,
       "required_outputs": [],
@@ -37,7 +37,7 @@
     {
       "id": "check_promote_threshold",
       "description": "Check if dynamic KB has enough validated entries to suggest /promote",
-      "instruction": "Run: python shared/tools/kb.py catalog. If dynamic/ has ≥5 entries with status:active and confidence:high, suggest user run /promote for skill upgrade review.",
+      "instruction": "Run: bash shared/tools/conda-python.sh shared/tools/kb.py catalog. If dynamic/ has ≥5 entries with status:active and confidence:high, suggest user run /promote for skill upgrade review.",
       "depends_on": ["write_to_dynamic"],
       "required": false,
       "required_outputs": [],

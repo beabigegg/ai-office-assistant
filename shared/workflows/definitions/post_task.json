@@ -5,7 +5,7 @@
     {
       "id": "update_project_state",
       "description": "Update project_state.md with current stage, new outputs, data changes",
-      "instruction": "Update {P}/workspace/project_state.md using Block Memory rules. Hot blocks: ## 當前階段(≤10行), ## 活躍任務(≤15行), ## 資料庫現況(≤10行), ## 活躍知識依賴(≤5行), ## 未解問題(≤5條), ## 主要產出（當前版本）(≤10行). Total: knowledge≤150行, project_management≤200行. Completed tasks → project_history.md (not project_state.md). Conditional: new data ingested→update 資料庫現況, new column meanings→append column_semantics.md, new report→record path in 主要產出.",
+      "instruction": "Update {PROJECT_ROOT}/workspace/project_state.md using Block Memory rules. Hot blocks: ## 當前階段(≤10行), ## 活躍任務(≤15行), ## 資料庫現況(≤10行), ## 活躍知識依賴(≤5行), ## 未解問題(≤5條), ## 主要產出（當前版本）(≤10行). Total: knowledge≤150行, project_management≤200行. Completed tasks → project_history.md (not project_state.md). Conditional: new data ingested→update 資料庫現況, new column meanings→append column_semantics.md, new report→record path in 主要產出.",
       "depends_on": [],
       "required": true,
       "required_outputs": [
@@ -17,34 +17,39 @@
     {
       "id": "record_decisions",
       "description": "Check decisions.md for new entries with D-NNN format, ensure sequential numbering",
-      "instruction": "1. Run: python shared/tools/kb.py next-id (get next D-NNN). 2. For each new decision: python shared/tools/kb.py add-decision --id D-NNN --date YYYY-MM-DD --project {P} --target '...' --question '...' --decision '...' --impact '...' [--supersedes D-XXX] [--refs_skill X] [--review_by YYYY-MM-DD]. 3. If no new decisions: complete with outputs {\"path_contains\":\"decisions.md\",\"skipped\":true}. Validator checks sequential numbering + conflict detection; ERROR level blocks flow.",
+      "instruction": "1. Run: bash shared/tools/conda-python.sh shared/tools/kb.py next-id (get next D-NNN from DB). 2. For each new decision: bash shared/tools/conda-python.sh shared/tools/kb.py add-decision --id D-NNN --date YYYY-MM-DD --project {PROJECT_ID} --target '...' --question '...' --decision '...' --impact '...' [--supersedes D-XXX] [--refs_skill X] [--review_by YYYY-MM-DD]. 3. Complete with outputs containing decision_ids, for example {\"decision_ids\":[\"D-201\",\"D-202\"]}. 4. If no new decisions: complete with outputs {\"skipped\":true}. Validator checks sequential numbering + conflict detection; ERROR level blocks flow.",
       "depends_on": ["update_project_state"],
       "required": true,
       "required_outputs": [
-        {"path_contains": "decisions.md", "description": "decisions.md checked/updated"}
+        {"output_key": "decision_ids", "description": "decision ids recorded in DB"}
       ],
+      "required_outputs_unless": "skipped",
       "validator": "check_decisions",
       "validator_params": {}
     },
     {
       "id": "record_knowledge",
       "description": "Record new rules/findings. Read checklist, report what was learned or explicitly state no new findings.",
-      "instruction": "Read checklist: shared/workflows/checklists/post_task__record_knowledge.yaml. For each new learning: python shared/tools/kb.py add-learning --id <prefix>-LNN --title '...' --date YYYY-MM-DD --content '...' --confidence high|medium|low [--project {P}] [--related_decision D-NNN]. If no new findings, state explicitly in checklist_responses. Submit responses for ALL checklist items.",
+      "instruction": "Read checklist: shared/workflows/checklists/post_task__record_knowledge.yaml. For each new learning: bash shared/tools/conda-python.sh shared/tools/kb.py add-learning --id <prefix>-LNN --title '...' --date YYYY-MM-DD --content '...' --confidence high|medium|low [--project {PROJECT_ID}] [--related_decision D-NNN]. When new learnings were added, complete with outputs containing learning_ids, for example {\"learning_ids\":[\"STD-L041\"]}. If no new findings, state explicitly in checklist_responses and complete with {\"skipped\":true, \"checklist_responses\": {...}}. Submit responses for ALL checklist items.",
       "depends_on": ["update_project_state"],
       "required": true,
-      "required_outputs": [],
+      "required_outputs": [
+        {"output_key": "learning_ids", "description": "learning ids recorded in DB"}
+      ],
+      "required_outputs_unless": "skipped",
       "validator": "check_checklist",
       "validator_params": {}
     },
     {
       "id": "check_memory_trigger",
       "description": "Evaluate memory snapshot conditions. Create snapshot if conditions met.",
-      "instruction": "Conditions — ANY triggers snapshot: ≥3 files written | DB schema changed | report produced | ≥10 conversation rounds | ≥2 new decisions. If triggered: write shared/kb/memory/YYYY-MM-DD.md with session summary (context, decisions, learnings, next steps). Complete with: --outputs '{\"memory_conditions_met\":true|false}'.",
+      "instruction": "Conditions — ANY triggers snapshot: ≥3 files written | DB schema changed | report produced | ≥10 conversation rounds | ≥2 new decisions. If triggered: (1) write shared/kb/memory/YYYY-MM-DD.md with session summary (context, decisions, learnings, next steps), then (2) run `bash shared/tools/conda-python.sh shared/tools/kb.py import-snapshot shared/kb/memory/YYYY-MM-DD.md` so the snapshot is searchable via `kb.py search --include-snapshots`. Complete with: --outputs '{\"memory_conditions_met\":true|false}'.",
       "depends_on": ["record_decisions", "record_knowledge"],
       "required": true,
       "required_outputs": [
         {"path_contains": "memory/", "description": "memory snapshot if conditions met"}
       ],
+      "required_outputs_if": "memory_conditions_met",
       "validator": "check_memory",
       "validator_params": {}
     },
@@ -61,7 +66,7 @@
     {
       "id": "sync_backlog",
       "description": "Update backlog.db: mark completed items done, add new action items discovered during task. Required for project_management type projects.",
-      "instruction": "Only for project_management type. Run: python shared/tools/backlog.py --project {P} list. For completed items: python shared/tools/backlog.py --project {P} resolve A-NNN --resolution '...'. For new discovered items: python shared/tools/backlog.py --project {P} add --title '...' --priority P0|P1|P2.",
+      "instruction": "Only for project_management type. Run: bash shared/tools/conda-python.sh shared/tools/backlog.py --project {PROJECT_ID} list. For completed items: bash shared/tools/conda-python.sh shared/tools/backlog.py --project {PROJECT_ID} resolve A-NNN --resolution '...'. For new discovered items: bash shared/tools/conda-python.sh shared/tools/backlog.py --project {PROJECT_ID} add --title '...' --priority P0|P1|P2.",
       "depends_on": ["record_decisions"],
       "required": false,
       "required_outputs": [],
@@ -81,11 +86,11 @@
     {
       "id": "refresh_kb_exports",
       "description": "EVO-016: Regenerate .md exports from DB (DB is source of truth)",
-      "instruction": "Run: python shared/tools/kb.py export all. This rewrites shared/kb/decisions.md and shared/kb/dynamic/learning_notes.md from kb_index.db. Non-blocking; skip if no new decisions/learnings were added in this task.",
+      "instruction": "If record_decisions or record_knowledge added new ids this round, run: bash shared/tools/conda-python.sh shared/tools/kb.py export all. Complete with outputs such as {\"exported\":true,\"export_targets\":[\"shared/kb/decisions.md\",\"shared/kb/dynamic/learning_notes.md\"]}. If no new decisions/learnings were added in this task, complete with {\"skipped\":true}.",
       "depends_on": ["record_decisions", "record_knowledge"],
-      "required": false,
+      "required": true,
       "required_outputs": [],
-      "validator": null,
+      "validator": "check_kb_exports",
       "validator_params": {}
     }
   ]

@@ -5,7 +5,7 @@
 
 ## 概述
 
-BOM 資料入庫後存放於 SQLite，位於 `{P}/workspace/db/bom.db`。
+BOM 資料入庫後存放於 SQLite，位於 `{PROJECT_ROOT}/workspace/db/bom.db`。
 包含原始表（raw_bom）和標準化表（std_bom）。
 
 ---

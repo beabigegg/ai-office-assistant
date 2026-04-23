@@ -9,8 +9,8 @@ Usage:
     python kb.py search "topic" --keyword         # keyword fallback
     python kb.py read D-042 [D-043 ...]           # read full content by ID
     python kb.py next-id                          # next available D-NNN
-    python kb.py add decision --id D-146 ...      # add decision (DB + .md)
-    python kb.py add learning --id ECR-L95 ...    # add learning note (DB + .md)
+    python kb.py add-decision --id D-146 ...      # add decision (DB source of truth)
+    python kb.py add-learning --id ECR-L95 ...    # add learning note (DB source of truth)
     python kb.py update D-042 --status superseded # update entry status
     python kb.py export decisions                 # export DB -> .md
     python kb.py export learning                  # export DB -> .md
@@ -586,16 +586,6 @@ def cmd_next_id(args):
         last_num = int(m.group(1)) if m else 0
     else:
         last_num = 0
-    # Also check .md for safety during transition
-    if DECISIONS_PATH.exists():
-        tail_bytes = min(DECISIONS_PATH.stat().st_size, 8192)
-        with open(DECISIONS_PATH, 'rb') as f:
-            if DECISIONS_PATH.stat().st_size > tail_bytes:
-                f.seek(-tail_bytes, 2)
-            tail = f.read().decode('utf-8', errors='replace')
-        md_ids = [int(x) for x in re.findall(r'### D-(\d+)', tail)]
-        if md_ids:
-            last_num = max(last_num, max(md_ids))
     next_num = last_num + 1
     print(json.dumps({"next_id": f"D-{next_num:03d}", "last_id": f"D-{last_num:03d}"}))
     conn.close()
@@ -606,7 +596,7 @@ def cmd_next_id(args):
 # ═══════════════════════════════════════════════════════════
 
 def cmd_add_decision(args):
-    """Write decision to DB (source of truth) + append to .md (export)."""
+    """Write decision to DB (source of truth)."""
     conn = _get_conn()
     _ensure_schema(conn)
 
@@ -623,17 +613,6 @@ def cmd_add_decision(args):
         last_num = int(last_m.group(1)) if last_m else 0
     else:
         last_num = 0
-    # Also check .md
-    if DECISIONS_PATH.exists():
-        tail_bytes = min(DECISIONS_PATH.stat().st_size, 8192)
-        with open(DECISIONS_PATH, 'rb') as f:
-            if DECISIONS_PATH.stat().st_size > tail_bytes:
-                f.seek(-tail_bytes, 2)
-            tail = f.read().decode('utf-8', errors='replace')
-        md_ids = [int(x) for x in re.findall(r'### D-(\d+)', tail)]
-        if md_ids:
-            last_num = max(last_num, max(md_ids))
-
     new_num = int(m.group(1))
     if new_num != last_num + 1:
         print(json.dumps({"ok": False, "error": f"ID not sequential: {node_id}, expected D-{last_num+1:03d}"}))
@@ -710,7 +689,10 @@ def cmd_add_decision(args):
     result = {
         "ok": True, "id": node_id,
         "db": str(DB_PATH.relative_to(ROOT)),
-        "hint_md": "Run `python shared/tools/kb.py export decisions` to refresh .md export.",
+        "hint_md": (
+            "Run `bash shared/tools/conda-python.sh shared/tools/kb.py export decisions` "
+            "to refresh .md export."
+        ),
     }
     if queue_size >= 5:
         result["hint"] = f"edge_queue={queue_size}，建議執行 kb.py build-edges 自動補齊關聯邊"
@@ -719,7 +701,7 @@ def cmd_add_decision(args):
 
 
 def cmd_add_learning(args):
-    """Write learning note to DB (source of truth) + append to .md (export)."""
+    """Write learning note to DB (source of truth)."""
     conn = _get_conn()
     _ensure_schema(conn)
 
@@ -761,7 +743,10 @@ def cmd_add_learning(args):
     result = {
         "ok": True, "id": node_id,
         "db": str(DB_PATH.relative_to(ROOT)),
-        "hint_md": "Run `python shared/tools/kb.py export learning` to refresh .md export.",
+        "hint_md": (
+            "Run `bash shared/tools/conda-python.sh shared/tools/kb.py export learning` "
+            "to refresh .md export."
+        ),
     }
     if queue_size >= 5:
         result["hint"] = f"edge_queue={queue_size}，建議執行 kb.py build-edges 自動補齊關聯邊"
@@ -893,6 +878,8 @@ def cmd_validate(args):
             quiet=getattr(args, 'quiet', False),
             strict=getattr(args, 'strict', False),
         )
+        if getattr(args, 'warn_exit_zero', False) and code == 1:
+            code = 0
         sys.exit(code)
     finally:
         kb.close()
@@ -1988,14 +1975,21 @@ def main():
     p_learn.add_argument('--date', required=True)
     p_learn.add_argument('--content', required=True)
     p_learn.add_argument('--confidence', required=True, choices=['high', 'medium', 'low'])
-    p_learn.add_argument('--status', default='active')
+    p_learn.add_argument(
+        '--status',
+        default='active',
+        choices=['draft', 'active', 'mature', 'promoted', 'stale', 'archived'],
+    )
     p_learn.add_argument('--project')
     p_learn.add_argument('--related_decision')
 
     # update
     p_upd = sub.add_parser('update', help='Update entry status/fields')
     p_upd.add_argument('entry_id')
-    p_upd.add_argument('--status', choices=['active', 'superseded', 'deprecated', 'promoted'])
+    p_upd.add_argument(
+        '--status',
+        choices=['draft', 'active', 'mature', 'promoted', 'stale', 'archived', 'superseded'],
+    )
     p_upd.add_argument('--superseded-by', dest='superseded_by')
 
     # export
@@ -2006,6 +2000,11 @@ def main():
     p_val = sub.add_parser('validate', help='Consistency checks')
     p_val.add_argument('--quiet', action='store_true')
     p_val.add_argument('--strict', action='store_true')
+    p_val.add_argument(
+        '--warn-exit-zero',
+        action='store_true',
+        help='Return exit code 0 when only WARN entries are present; ERROR still returns 2.',
+    )
 
     # trace
     p_trace = sub.add_parser('trace', help='Trace node relationships')

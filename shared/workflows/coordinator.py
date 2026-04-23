@@ -33,6 +33,55 @@ RUNTIME_LOG = WORKFLOWS_DIR / 'state' / 'workflow_runtime.jsonl'
 
 MAX_HISTORY = 50
 
+from project_ref import list_project_ids, normalize_project_id, project_exists
+
+
+def _launcher_prefix() -> str:
+    return "bash shared/tools/conda-python.sh shared/workflows/coordinator.py"
+
+
+def _format_sample_outputs(node: dict, project: str = "...") -> dict:
+    sample = {}
+    required_outputs = node.get("required_outputs", [])
+    for req in required_outputs:
+        output_key = req.get("output_key")
+        if output_key:
+            sample[output_key] = f"<{output_key}>"
+            continue
+        path_contains = req.get("path_contains", "")
+        if path_contains:
+            if "project_state.md" in path_contains:
+                sample["file"] = f"projects/{project}/workspace/project_state.md"
+            else:
+                sample["file"] = path_contains
+    return sample
+
+
+def _next_step_command(node: dict, instance_id: str, project: str = "...") -> str:
+    parts = [_launcher_prefix(), "complete", node["id"], "--instance", instance_id]
+    sample_outputs = _format_sample_outputs(node, project=project)
+    if sample_outputs:
+        parts.extend(["--outputs", f"'{json.dumps(sample_outputs, ensure_ascii=False)}'"])
+    return " ".join(parts)
+
+
+def _usage_text() -> str:
+    return (
+        "Usage: coordinator.py <command> [args]\n"
+        "Commands:\n"
+        "  start <workflow_name> [--context '{...}'] [--script <path>]\n"
+        "  complete <node_id> [--instance <id>|--session <id>] "
+        "[--outputs '{...}'|--artifacts '{...}'] [--script <path>]\n"
+        "  list\n"
+        "  status [instance_id]\n"
+        "  show <instance_id>\n"
+        "  check_pending\n"
+        "  hook_stop\n"
+        "  hook_post\n"
+        "  force_close [--instance <id>] --approved-by-user --reason \"...\"\n"
+        "  help [command]\n"
+    )
+
 
 # ─── State Management ───────────────────────────────────────────────
 
@@ -155,11 +204,32 @@ def start(workflow_name: str, context: dict, script: str = None) -> tuple:
     """
     state = _load_state()
     defn = _load_definition(workflow_name)
+    context = dict(context or {})
+    if 'project' in context:
+        raw_project = context.get('project')
+        context['project'] = normalize_project_id(raw_project)
+        project_id = context['project']
+        raw_project_norm = (raw_project or '').strip().replace('\\', '/').strip('/')
+        if raw_project_norm.startswith('projects/'):
+            available = ", ".join(list_project_ids(ROOT)[:12])
+            return False, (
+                "[ERROR] Invalid context.project. Use canonical project id only "
+                "(for example 'ecr-ecn', not 'projects/ecr-ecn'). "
+                f"Got: {raw_project}. "
+                f"Available projects: {available}"
+            )
+        if not project_exists(ROOT, project_id):
+            available = ", ".join(list_project_ids(ROOT)[:12])
+            return False, (
+                "[ERROR] Invalid context.project. Use canonical project id only "
+                "(for example 'ecr-ecn', not 'projects/ecr-ecn'). "
+                f"Got: {project_id or '<empty>'}. "
+                f"Available projects: {available}"
+            )
 
     injection = None
     if script:
         injection = _run_injection_script(script)
-        context = dict(context or {})
         context["injected_script"] = {
             "path": injection["script"],
             "ok": injection["ok"],
@@ -214,7 +284,7 @@ def start(workflow_name: str, context: dict, script: str = None) -> tuple:
     )
     if blocked:
         msg += f"  BLOCKED: {', '.join(blocked)}\n"
-    hints = _next_node_hints(defn['nodes'], nodes)
+    hints = _next_node_hints(defn['nodes'], nodes, instance_id=instance_id, project=context.get('project', '...'))
     if hints:
         msg += hints
     if injection is not None:
@@ -297,7 +367,12 @@ def complete(node_id: str, outputs: dict = None, instance_id: str = None, script
         all_required_done = engine.is_terminal_state()
 
         if not all_required_done:
-            hints = _next_node_hints(inst["definition"]["nodes"], inst["nodes"])
+            hints = _next_node_hints(
+                inst["definition"]["nodes"],
+                inst["nodes"],
+                instance_id=instance_id,
+                project=inst.get("context", {}).get("project", "..."),
+            )
             if hints:
                 msg += hints
 
@@ -409,6 +484,8 @@ def status(instance_id: str = None) -> str:
                 vr = ns["validator_result"]
                 tag = "PASS" if vr["passed"] else "FAIL"
                 line += f" | validator: {tag}"
+            if st == "READY" and node.get("delegate_to"):
+                line += f" | delegate: {node['delegate_to']}"
             lines.append(line)
 
         lines.append("")
@@ -419,6 +496,14 @@ def status(instance_id: str = None) -> str:
             lines.append(f"  {k}: {v}")
 
     return "\n".join(lines)
+
+
+def show(instance_id: str) -> str:
+    """Alias for status(instance_id), but errors if instance is missing."""
+    state = _load_state()
+    if instance_id not in state["active"]:
+        return f"[ERROR] Active workflow instance not found: {instance_id}"
+    return status(instance_id)
 
 
 def check_pending() -> str:
@@ -475,15 +560,25 @@ def _increment_counter(state: dict, workflow_name: str):
     state["counters"][workflow_name] = state["counters"].get(workflow_name, 0) + 1
 
 
-def _next_node_hints(defn_nodes: list, nodes_state: dict) -> str:
+def _next_node_hints(defn_nodes: list, nodes_state: dict, instance_id: str = None, project: str = "...") -> str:
     """Return instruction text for all READY nodes that have an 'instruction' field."""
     lines = []
     for node in defn_nodes:
         nid = node["id"]
         if nodes_state.get(nid, {}).get("status") == "ready":
             instr = node.get("instruction", "").strip()
+            delegate_to = node.get("delegate_to")
+            delegate_hint = node.get("delegate_hint", "").strip()
+            prefix = f"\n  [TODO: {nid}]"
+            if delegate_to:
+                prefix += f" [delegate_to={delegate_to}]"
+            lines.append(prefix + "\n")
+            if delegate_hint:
+                lines.append(f"  Delegate hint: {delegate_hint}\n")
             if instr:
-                lines.append(f"\n  [TODO: {nid}]\n  {instr}")
+                lines.append(f"  {instr}\n")
+            if instance_id:
+                lines.append(f"  Next: {_next_step_command(node, instance_id, project=project)}\n")
     return "".join(lines)
 
 
@@ -568,7 +663,7 @@ def _handle_stop_hook():
                     "[WARNING] No active workflow, but recent work detected "
                     "(workspace/scripts, project_state.md, memos, kb/dynamic, or workflow completion events).\n"
                     "Did you forget to run post_task workflow?\n"
-                    "  python shared/workflows/coordinator.py start post_task "
+                    "  bash shared/tools/conda-python.sh shared/workflows/coordinator.py start post_task "
                     "--context '{\"project\":\"...\",\"task\":\"...\"}'\n"
                     "To proceed without post_task, stop again."
                 )
@@ -599,7 +694,7 @@ def _handle_stop_hook():
             + "\n".join(pending_lines)
             + "\n\nComplete these nodes before stopping. If this is a workflow design gap,"
               " the user may explicitly override with:\n"
-              "  python shared/workflows/coordinator.py force_close "
+              "  bash shared/tools/conda-python.sh shared/workflows/coordinator.py force_close "
               "--approved-by-user --reason \"workflow_design_gap\""
         )
         sys.stderr.write(msg)
@@ -647,7 +742,7 @@ def _handle_post_tool():
         for m in matches:
             hints.append(
                 f"File write matched workflow node '{m['node']}' in {m['instance']}. "
-                f"Run: python shared/workflows/coordinator.py complete {m['node']}"
+                f"Run: {_launcher_prefix()} complete {m['node']} --instance {m['instance']}"
             )
         result = {"additionalContext": " | ".join(hints)}
         print(json.dumps(result))
@@ -655,8 +750,8 @@ def _handle_post_tool():
     sys.exit(0)
 
 
-def force_close(user_approved: bool = False, reason: str = ''):
-    """Force-close all active workflows without completing nodes."""
+def force_close(user_approved: bool = False, reason: str = '', instance_id: str = None):
+    """Force-close one or all active workflows without completing nodes."""
     if not user_approved:
         return (
             "[DENY] force_close requires explicit user approval. "
@@ -666,7 +761,12 @@ def force_close(user_approved: bool = False, reason: str = ''):
         return "[DENY] force_close requires a non-empty --reason for audit logging."
 
     state = _load_state()
-    closed = list(state["active"].keys())
+    if instance_id:
+        if instance_id not in state["active"]:
+            return f"[FORCE] No active workflow matches instance: {instance_id}"
+        closed = [instance_id]
+    else:
+        closed = list(state["active"].keys())
     entry = {
         "ts": datetime.now(timezone.utc).isoformat(),
         "reason": reason,
@@ -697,11 +797,29 @@ def force_close(user_approved: bool = False, reason: str = ''):
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: coordinator.py <command> [args]")
-        print("Commands: start, complete, status, check_pending, hook_stop, hook_post, force_close")
+        print(_usage_text())
         sys.exit(1)
 
     cmd = sys.argv[1]
+
+    if cmd in ('help', '--help', '-h'):
+        topic = sys.argv[2] if len(sys.argv) > 2 else None
+        if topic == 'complete':
+            print(
+                "Usage: coordinator.py complete <node_id> [--instance <id>|--session <id>] "
+                "[--outputs '{...}'|--artifacts '{...}'] [--script <path>]"
+            )
+        elif topic == 'start':
+            print("Usage: coordinator.py start <workflow_name> [--context '{...}'] [--script <path>]")
+        elif topic in ('status', 'list'):
+            print("Usage: coordinator.py status [instance_id]")
+        elif topic == 'show':
+            print("Usage: coordinator.py show <instance_id>")
+        elif topic == 'force_close':
+            print("Usage: coordinator.py force_close [--instance <id>] --approved-by-user --reason \"...\"")
+        else:
+            print(_usage_text())
+        sys.exit(0)
 
     if cmd == 'start':
         if len(sys.argv) < 3:
@@ -728,7 +846,10 @@ def main():
 
     elif cmd == 'complete':
         if len(sys.argv) < 3:
-            print("Usage: coordinator.py complete <node_id> [--outputs '{...}'] [--instance <id>] [--script <path>]")
+            print(
+                "Usage: coordinator.py complete <node_id> [--instance <id>|--session <id>] "
+                "[--outputs '{...}'|--artifacts '{...}'] [--script <path>]"
+            )
             sys.exit(1)
         node_id = sys.argv[2]
         outputs = {}
@@ -742,8 +863,22 @@ def main():
                 except json.JSONDecodeError:
                     print("[ERROR] Invalid JSON in --outputs")
                     sys.exit(1)
+        if '--artifacts' in sys.argv:
+            idx = sys.argv.index('--artifacts')
+            if idx + 1 < len(sys.argv):
+                try:
+                    artifact_outputs = json.loads(sys.argv[idx + 1])
+                except json.JSONDecodeError:
+                    print("[ERROR] Invalid JSON in --artifacts")
+                    sys.exit(1)
+                if isinstance(artifact_outputs, dict):
+                    outputs.update(artifact_outputs)
         if '--instance' in sys.argv:
             idx = sys.argv.index('--instance')
+            if idx + 1 < len(sys.argv):
+                inst_id = sys.argv[idx + 1]
+        elif '--session' in sys.argv:
+            idx = sys.argv.index('--session')
             if idx + 1 < len(sys.argv):
                 inst_id = sys.argv[idx + 1]
         if '--script' in sys.argv:
@@ -754,9 +889,20 @@ def main():
         print(msg)
         sys.exit(0 if ok else 1)
 
+    elif cmd == 'list':
+        print(status())
+
     elif cmd == 'status':
         inst_id = sys.argv[2] if len(sys.argv) > 2 else None
         print(status(inst_id))
+
+    elif cmd == 'show':
+        if len(sys.argv) < 3:
+            print("Usage: coordinator.py show <instance_id>")
+            sys.exit(1)
+        result = show(sys.argv[2])
+        print(result)
+        sys.exit(0 if not result.startswith("[ERROR]") else 1)
 
     elif cmd == 'check_pending':
         print(check_pending())
@@ -770,16 +916,22 @@ def main():
     elif cmd == 'force_close':
         approved = '--approved-by-user' in sys.argv
         reason = ''
+        inst_id = None
         if '--reason' in sys.argv:
             idx = sys.argv.index('--reason')
             if idx + 1 < len(sys.argv):
                 reason = sys.argv[idx + 1]
-        result = force_close(user_approved=approved, reason=reason)
+        if '--instance' in sys.argv:
+            idx = sys.argv.index('--instance')
+            if idx + 1 < len(sys.argv):
+                inst_id = sys.argv[idx + 1]
+        result = force_close(user_approved=approved, reason=reason, instance_id=inst_id)
         print(result)
         sys.exit(0 if result.startswith("[FORCE]") else 1)
 
     else:
         print(f"Unknown command: {cmd}")
+        print(_usage_text())
         sys.exit(1)
 
 

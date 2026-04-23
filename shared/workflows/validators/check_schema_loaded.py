@@ -34,7 +34,8 @@ def validate(context: dict) -> tuple:
     if not schema_path.exists():
         return False, (
             f"Schema file does not exist: {schema_file}. "
-            f"Generate it first: python shared/tools/db_schema.py generate <db_path>"
+            "Generate it first: bash shared/tools/conda-python.sh "
+            "shared/tools/db_schema.py generate <db_path>"
         )
 
     # 3. Optional: verify SCHEMA filename matches db_path

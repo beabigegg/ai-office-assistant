@@ -15,20 +15,20 @@ Behavior:
 from __future__ import annotations
 
 import sqlite3
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
+WORKFLOWS_DIR = Path(__file__).resolve().parents[1]
+if str(WORKFLOWS_DIR) not in sys.path:
+    sys.path.insert(0, str(WORKFLOWS_DIR))
+
+from project_ref import normalize_project_id, project_db_dir
+
 
 STALE_BLOCKED_DAYS = 3
 STALE_IN_PROGRESS_DAYS = 7
-
-
-def _normalize_project(name: str) -> str:
-    name = (name or '').strip().replace('\\', '/')
-    if name.startswith('projects/'):
-        name = name[len('projects/'):]
-    return name.strip('/')
 
 
 def _parse_iso(ts: Optional[str]) -> Optional[datetime]:
@@ -54,12 +54,12 @@ def _age_days(ts: Optional[str]) -> Optional[float]:
 def validate(context: dict) -> tuple:
     _default_root = Path(__file__).resolve().parent.parent.parent.parent
     root = Path(context.get('root', _default_root))
-    project = _normalize_project(context.get('project', ''))
+    project = normalize_project_id(context.get('project', ''))
 
     if not project:
         return True, "no project context, skip backlog health"
 
-    backlog_db = root / 'projects' / project / 'workspace' / 'db' / 'backlog.db'
+    backlog_db = project_db_dir(root, project) / 'backlog.db'
     if not backlog_db.exists():
         return True, "no backlog.db"
 

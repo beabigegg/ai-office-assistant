@@ -11,25 +11,29 @@ Supports scope parameter in validator_params:
 """
 import sqlite3
 from pathlib import Path
+import sys
+
+WORKFLOWS_DIR = Path(__file__).resolve().parents[1]
+if str(WORKFLOWS_DIR) not in sys.path:
+    sys.path.insert(0, str(WORKFLOWS_DIR))
+
+from project_ref import normalize_project_id, project_db_dir
 
 
 def validate(context: dict) -> tuple:
     _default_root = Path(__file__).resolve().parent.parent.parent.parent
     root = Path(context.get('root', _default_root))
-    project = context.get('project', '')
+    project = normalize_project_id(context.get('project', ''))
     params = context.get('params', {})
     outputs = context.get('outputs', {})
-    excluded_prefixes = params.get('excluded_prefixes', ['RD-', 'PE-'])
+    excluded_prefixes = params.get('excluded_prefixes') or ['RD-', 'PE-']
     scope = params.get('scope', 'full_db')
     # operation_id: prefer runtime outputs over static params
     operation_id = outputs.get('operation_id') or params.get('operation_id', None)
 
     # Find SQLite DB
     if project:
-        db_candidates = [
-            root / 'projects' / project / 'workspace' / 'db',
-            root / project / 'workspace' / 'db',
-        ]
+        db_candidates = [project_db_dir(root, project)]
     else:
         db_candidates = list(root.glob('projects/*/workspace/db'))
 

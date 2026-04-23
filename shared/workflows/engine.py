@@ -128,13 +128,22 @@ def _validate_required_artifacts(node_def: dict, outputs: dict, root: Path, proj
         return True, "no required artifacts"
 
     candidates = list(dict.fromkeys(_iter_output_strings(outputs)))
-    if not candidates:
-        return False, "missing artifact proof in outputs"
 
     missing = []
     for req in required_outputs:
+        output_key = req.get('output_key')
+        if output_key:
+            value = outputs.get(output_key)
+            if value not in (None, '', [], {}, ()):
+                continue
+            missing.append(req.get('description') or output_key)
+            continue
+
         pattern = str(req.get('path_contains', '')).replace('\\', '/').lower()
         if not pattern:
+            continue
+        if not candidates:
+            missing.append(req.get('description') or req.get('path_contains') or pattern)
             continue
 
         matched = False
@@ -153,6 +162,23 @@ def _validate_required_artifacts(node_def: dict, outputs: dict, root: Path, proj
     if missing:
         return False, f"required artifacts not proven: {', '.join(missing)}"
     return True, f"artifact proof matched {len(required_outputs)} requirement(s)"
+
+
+def _should_validate_required_outputs(node_def: dict, outputs: dict) -> bool:
+    """Return True when required_outputs should be enforced for this completion."""
+    required_outputs = node_def.get('required_outputs', [])
+    if not required_outputs:
+        return False
+
+    cond_key = node_def.get('required_outputs_if')
+    if cond_key and not outputs.get(cond_key):
+        return False
+
+    unless_key = node_def.get('required_outputs_unless')
+    if unless_key and outputs.get(unless_key):
+        return False
+
+    return True
 
 
 # ─── Timeout Helper ──────────────────────────────────────────────────────────
@@ -295,7 +321,7 @@ class WorkflowEngine:
                 outputs=outputs,
             )
 
-            if node_def.get('enforce_required_outputs', False):
+            if _should_validate_required_outputs(node_def, outputs):
                 passed, vmsg = _validate_required_artifacts(
                     node_def=node_def,
                     outputs=outputs,

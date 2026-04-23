@@ -1,15 +1,22 @@
 """Validator: check_traceability
 Verifies that ingested tables contain traceability columns.
 
-Required columns: _operation_id, _source_file, _source_row
+Required columns: _operation_id, _source_file, _source_version, _source_row
 These columns ensure every record can be traced back to its origin.
 
 Part of Harness Engineering R3: Data traceability enforcement.
 """
 import sqlite3
 from pathlib import Path
+import sys
 
-REQUIRED_COLUMNS = ['_operation_id', '_source_file', '_source_row']
+WORKFLOWS_DIR = Path(__file__).resolve().parents[1]
+if str(WORKFLOWS_DIR) not in sys.path:
+    sys.path.insert(0, str(WORKFLOWS_DIR))
+
+from project_ref import normalize_project_id, project_db_dir
+
+REQUIRED_COLUMNS = ['_operation_id', '_source_file', '_source_version', '_source_row']
 
 
 def _find_db(root: Path, project: str, outputs: dict) -> Path | None:
@@ -24,10 +31,7 @@ def _find_db(root: Path, project: str, outputs: dict) -> Path | None:
             return p
 
     if project:
-        db_candidates = [
-            root / 'projects' / project / 'workspace' / 'db',
-            root / project / 'workspace' / 'db',
-        ]
+        db_candidates = [project_db_dir(root, project)]
     else:
         db_candidates = list(root.glob('projects/*/workspace/db'))
 
@@ -42,7 +46,7 @@ def _find_db(root: Path, project: str, outputs: dict) -> Path | None:
 def validate(context: dict) -> tuple:
     _default_root = Path(__file__).resolve().parent.parent.parent.parent
     root = Path(context.get('root', _default_root))
-    project = context.get('project', '')
+    project = normalize_project_id(context.get('project', ''))
     outputs = context.get('outputs', {})
     params = context.get('params', {})
 

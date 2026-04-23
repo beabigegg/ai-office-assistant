@@ -66,7 +66,7 @@
       },
       "anomaly_report_path": {
         "type": "string",
-        "description": "Optional path to a detailed report if anomalies found. Written under {P}/workspace/memos/ by convention."
+        "description": "Optional path to a detailed report if anomalies found. Written under {PROJECT_ROOT}/workspace/memos/ by convention."
       }
     }
   }

@@ -57,11 +57,11 @@ python shared/workflows/coordinator.py complete post_validation \
 
 ## 執行規範
 
-1. 檢查腳本寫在 `{P}/workspace/scripts/_post_validate_<operation_id>.py`，跑完即刪
+1. 檢查腳本寫在 `{PROJECT_ROOT}/workspace/scripts/_post_validate_<operation_id>.py`，跑完即刪
 2. Windows: `sys.stdout.reconfigure(encoding='utf-8')`
 3. 每項 check 寫清楚「做了什麼 SELECT」+「結果數字」進 `evidence`，方便人工審查
 4. 大表查詢加 `LIMIT` 於樣本呈現，但統計數字（COUNT / MIN / MAX / DISTINCT）取全批次
-5. 若有 fail，額外產 `{P}/workspace/memos/anomaly_<operation_id>.md` 記錄明細（路徑寫進 `anomaly_report_path`）
+5. 若有 fail，額外產 `{PROJECT_ROOT}/workspace/memos/anomaly_<operation_id>.md` 記錄明細（路徑寫進 `anomaly_report_path`）
 
 ## Checklist 對應行為
 

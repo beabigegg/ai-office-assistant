@@ -2,6 +2,7 @@
 Checks if memory snapshot conditions are met and if snapshot exists.
 Also checks MEMORY.md line count against 200-line hard limit.
 """
+import sqlite3
 from pathlib import Path
 from datetime import date
 
@@ -42,10 +43,34 @@ def validate(context: dict) -> tuple:
             msg += f" [WARN: {'; '.join(warnings)}]"
         return True, msg
 
-    if snapshot_path.exists():
-        msg = f"snapshot written: {snapshot_path.name}"
-        if warnings:
-            msg += f" [WARN: {'; '.join(warnings)}]"
-        return True, msg
-    else:
+    if not snapshot_path.exists():
         return False, f"conditions met but no snapshot found at {snapshot_path}"
+
+    db_path = root / 'shared' / 'kb' / 'knowledge_graph' / 'kb_index.db'
+    if not db_path.exists():
+        return False, f"snapshot written but KB DB missing: {db_path}"
+
+    try:
+        conn = sqlite3.connect(str(db_path))
+        row = conn.execute(
+            "SELECT id FROM session_snapshots WHERE id=?",
+            (today_str,),
+        ).fetchone()
+    except sqlite3.Error as exc:
+        return False, f"snapshot written but snapshot index unreadable: {exc}"
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+    if row is None:
+        return False, (
+            f"snapshot written but not indexed in session_snapshots: {today_str}. "
+            f"Run: bash shared/tools/conda-python.sh shared/tools/kb.py import-snapshot {snapshot_path}"
+        )
+
+    msg = f"snapshot written and indexed: {snapshot_path.name}"
+    if warnings:
+        msg += f" [WARN: {'; '.join(warnings)}]"
+    return True, msg

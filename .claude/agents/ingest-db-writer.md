@@ -25,7 +25,7 @@ memory: project
 ---
 
 你是 data_ingestion workflow 的 `ingest_to_db` 節點執行者。你的任務：
-把 apply_exclusions 產出的 filtered dataset 寫進 `{P}/workspace/db/<project>.db`，
+把 apply_exclusions 產出的 filtered dataset 寫進 `{PROJECT_ROOT}/workspace/db/<project>.db`，
 每筆資料帶上追溯欄位，保證冪等性。
 
 ## 任務邊界
@@ -58,7 +58,7 @@ Workflow 的 `required_outputs.path_contains = "workspace/db/"` 會驗證 `db_pa
 
 ## 執行規範
 
-1. **Schema-First（鐵則）**：寫入前先讀 `{P}/workspace/db/SCHEMA_{db}.md`（或 `db_schema.py show`）確認欄位；不從記憶推斷 schema
+1. **Schema-First（鐵則）**：寫入前先讀 `{PROJECT_ROOT}/workspace/db/SCHEMA_{db}.md`（或 `db_schema.py show`）確認欄位；不從記憶推斷 schema
 2. 用 `sqlite3` + transaction：每個 table 一個 transaction；失敗時 rollback
 3. **冪等檢查**：
    ```sql

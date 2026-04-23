@@ -5,23 +5,27 @@ Also creates a single-version backup (.project_state.prev.md) before validation.
 """
 import re
 import shutil
+import sys
 import time
 from pathlib import Path
+
+WORKFLOWS_DIR = Path(__file__).resolve().parents[1]
+if str(WORKFLOWS_DIR) not in sys.path:
+    sys.path.insert(0, str(WORKFLOWS_DIR))
+
+from project_ref import normalize_project_id, project_workspace
 
 
 def validate(context: dict) -> tuple:
     _default_root = Path(__file__).resolve().parent.parent.parent.parent
     root = Path(context.get('root', _default_root))
-    project = context.get('project', '')
+    project = normalize_project_id(context.get('project', ''))
     params = context.get('params', {})
     max_age = params.get('max_age_seconds', 600)
 
     # Find project_state.md
     if project:
-        candidates = [
-            root / 'projects' / project / 'workspace' / 'project_state.md',
-            root / project / 'workspace' / 'project_state.md',
-        ]
+        candidates = [project_workspace(root, project) / 'project_state.md']
     else:
         candidates = list(root.glob('projects/*/workspace/project_state.md'))
 
@@ -78,7 +82,7 @@ def _check_content_quality(target: Path) -> list:
         )
 
     # 2. Required Block Memory sections
-    required_sections = ['## 當前階段', '## 下一步行動',
+    required_sections = ['## 當前階段', '## 活躍任務',
                          '## 資料庫現況', '## 未解問題']
     missing = [s for s in required_sections if s not in content]
     if missing:
@@ -90,18 +94,18 @@ def _check_content_quality(target: Path) -> list:
     if dups:
         warnings.append(f"DUPLICATE HEADINGS: {dups}")
 
-    # 4. Empty 下一步行動
-    na_match = re.search(
-        r'## 下一步行動\n(.*?)(?=\n##|\Z)', content, re.DOTALL
+    # 4. Empty 活躍任務
+    task_match = re.search(
+        r'## 活躍任務\n(.*?)(?=\n##|\Z)', content, re.DOTALL
     )
-    if na_match:
-        na_lines = [
-            l for l in na_match.group(1).splitlines()
+    if task_match:
+        task_lines = [
+            l for l in task_match.group(1).splitlines()
             if l.strip() and not l.strip().startswith(('>', '注意', '（', '('))
         ]
-        if not na_lines:
+        if not task_lines:
             warnings.append(
-                "下一步行動 is empty — add actionable items or link to backlog."
+                "活躍任務 is empty — add actionable items or link to backlog."
             )
 
     return warnings

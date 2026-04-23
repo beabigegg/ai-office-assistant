@@ -5,7 +5,7 @@ description: >
   for the data_ingestion workflow. Use proactively when the task involves:
   - data_ingestion workflow's detect_structure node
   - profiling columns, encodings, row counts, and merged-cell regions of a
-    newly archived file in {P}/vault/originals/
+    newly archived file in {PROJECT_ROOT}/vault/originals/
   - producing the structure report that confirm_with_user will show the user
   Delegate to this agent INSTEAD of opening the file yourself. This agent
   produces a read-only structural report; it never writes to DB or vault.
@@ -54,7 +54,7 @@ Input / Output 完整定義見
 1. Excel 大表 → `read_only=True` + `iter_rows`，不要 load 整份
 2. 取樣掃描欄位型別 → 最多掃 500 列，`null_rate` 要算準（整表不是樣本）
 3. Windows 編碼：用 `chardet.detect(open(path,'rb').read(65536))` 取前 64 KB 偵測
-4. 報告寫入 `{P}/workspace/_structure_report.json`（供 confirm_with_user 重用）
+4. 報告寫入 `{PROJECT_ROOT}/workspace/_structure_report.json`（供 confirm_with_user 重用）
 5. 回傳給 Leader：精簡 summary + handoff JSON path
 
 ## 內嵌規則

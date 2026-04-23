@@ -8,6 +8,7 @@
 
 - **Shell**：Windows Git Bash (MSYS2) / Linux-macOS 原生。禁 PowerShell/cmd/chmod/iconv（pretool_guard.py 阻擋）
 - **Python**：一律 conda env `ai-office`（`environment.yml`）。禁系統 Python
+- **標準啟動**：Claude/Git Bash 內執行 repo Python 時，一律用 `bash shared/tools/conda-python.sh <script> ...`。這仍是 conda env `ai-office`，但避開 Windows `conda run`/CP950 亂碼
 - **路徑**：bash 用 POSIX（`/d/...`）、Python 用 raw string（`r'D:\...'`）、專案內部用相對路徑
 - **機密**：全走 `.env` + `os.environ`，禁硬編碼（細節見 `SETUP.md`）
 - **輸出編碼**：UTF-8 無 BOM
@@ -49,7 +50,12 @@ shared/kb/{dynamic,external,memory}/    ← 匯出品 / 外部標準摘要 / 會
 
 ## 4. 專案結構
 
-`{P}` = `projects/<name>/`。固定子目錄：`vault/originals`、`vault/outputs`、`workspace/{db,scripts,memos,project_state.md}`。
+`{PROJECT_ID}` = canonical project id，例如 `ecr-ecn`、`process-analysis`、`BOM資料結構分析`。
+`{PROJECT_ROOT}` = `projects/<name>/` 專案根目錄。
+
+- 啟動 workflow 時，`--context '{"project":"..."}'` 裡的 `project` **只能填 `{PROJECT_ID}`**，不可填 `projects/<name>`、`projects/`、空字串
+- 只有在描述檔案路徑時才使用 `{PROJECT_ROOT}`，例如 `{PROJECT_ROOT}/workspace/project_state.md`
+- 固定子目錄：`vault/originals`、`vault/outputs`、`workspace/{db,scripts,memos,project_state.md}`
 
 - **project_state.md** 首行標注 `<!-- type: knowledge -->` 或 `<!-- type: project_management -->`
 - **Block Memory**（冷熱分離）：熱資料寫 project_state.md 區塊、冷資料進 project_history.md / kb_index.db / backlog.db
@@ -61,13 +67,13 @@ shared/kb/{dynamic,external,memory}/    ← 匯出品 / 外部標準摘要 / 會
 
 | 情境 | 啟動命令 |
 |------|----------|
-| 新會話開始 | `python shared/workflows/coordinator.py start session_start --context '{"project":"{P}"}'` |
-| 完成重要任務 | `python shared/workflows/coordinator.py start post_task --context '{"project":"{P}","task":"..."}'` |
-| 收到新資料（確認需入庫） | `python shared/workflows/coordinator.py start data_ingestion --context '{"project":"{P}","source":"<file>"}'` |
-| 收到新知識/規則 | `python shared/workflows/coordinator.py start knowledge_lifecycle --context '{"project":"{P}"}'` |
-| 產出分析報告 | `python shared/workflows/coordinator.py start analysis_report --context '{"project":"{P}"}'` |
-| 查知識 | `kb.py catalog` → `kb.py search "<topic>"` → `kb.py read <ID>` |
-| 查 schema | `db_schema.py show <db_path> --compact` 或讀 `SCHEMA_{db}.md` |
+| 新會話開始 | `bash shared/tools/conda-python.sh shared/workflows/coordinator.py start session_start --context '{"project":"{PROJECT_ID}"}'` |
+| 完成重要任務 | `bash shared/tools/conda-python.sh shared/workflows/coordinator.py start post_task --context '{"project":"{PROJECT_ID}","task":"..."}'` |
+| 收到新資料（確認需入庫） | `bash shared/tools/conda-python.sh shared/workflows/coordinator.py start data_ingestion --context '{"project":"{PROJECT_ID}","source":"<file>"}'` |
+| 收到新知識/規則 | `bash shared/tools/conda-python.sh shared/workflows/coordinator.py start knowledge_lifecycle --context '{"project":"{PROJECT_ID}"}'` |
+| 產出分析報告 | `bash shared/tools/conda-python.sh shared/workflows/coordinator.py start analysis_report --context '{"project":"{PROJECT_ID}"}'` |
+| 查知識 | `conda-python.sh shared/tools/kb.py catalog` → `search "<topic>"` → `read <ID>` |
+| 查 schema | `conda-python.sh shared/tools/db_schema.py show <db_path> --compact` 或讀 `SCHEMA_{db}.md` |
 
 **收到新資料：先判斷再入庫。** 小量（≤500 行）/活文件/格式複雜 → Leader 直接讀寫，禁止預設走 data_ingestion 或先寫解析腳本。
 
