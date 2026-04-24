@@ -21,9 +21,14 @@ ROOT = Path(__file__).resolve().parent.parent.parent
 DECISIONS_PATH = ROOT / 'shared' / 'kb' / 'decisions.md'
 
 # Skills known to exist
+# Note: 'reliability-testing' is kept as a compat stub only — new decisions
+# should classify under 'automotive-reliability-standards' (generic core) or
+# 'internal-reliability-practice' (internal overlay). This list feeds historic
+# backfill matching; do not treat compat presence as an endorsement for new use.
 KNOWN_SKILLS = [
-    'bom-rules', 'process-bom-semantics', 'reliability-testing',
-    'automotive-reliability-standards',
+    'bom-rules', 'process-bom-semantics',
+    'automotive-reliability-standards', 'internal-reliability-practice',
+    'reliability-testing',  # compat — historic decisions only
     'package-code', 'mil-std-750', 'pptx-operations',
     'excel-operations', 'word-operations'
 ]

@@ -52,6 +52,8 @@
 
 若這些檔不在本機，`data_ingestion` 雖仍有 workflow 定義，但無法實際委派到對應 agent。
 
+現況（2026-04-24）：`ingest-archiver` / `ingest-structure-detector` / `ingest-db-writer` / `ingest-validator` 四個 agent 在本機是 `internal + local-only + candidate_future_generic`，目前正常運作。它們還不是缺失狀態，只是尚未拆分為 generic engine + internal overlay；拆分時機見 `AGENT_SKILL_GOVERNANCE.md` 的 graduation criterion。
+
 另外 `apply_exclusions` 的 runtime 已改由 `ingest-exclusion-engine` 執行，但 embedded rules 與專案排除政策仍依賴 internal skills：
 
 - `bom-rules`
@@ -108,14 +110,14 @@ repo clone 完後，generic 框架會齊，但 internal 資產不會跟著下來
 3. 跑一次：
 
 ```bash
-python shared/tools/system_audit.py
-python shared/tools/sync_agent_rules.py --dry-run
+bash shared/tools/conda-python.sh shared/tools/system_audit.py
+bash shared/tools/conda-python.sh shared/tools/sync_agent_rules.py --dry-run
 ```
 
 若要讓 `data_ingestion` 的 embedded rules 與本機 internal skills 對齊，再跑：
 
 ```bash
-python shared/tools/sync_agent_rules.py --apply
+bash shared/tools/conda-python.sh shared/tools/sync_agent_rules.py --apply
 ```
 
 ## 4. 建議備份方式

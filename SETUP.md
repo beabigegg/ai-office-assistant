@@ -200,7 +200,7 @@ conda env create -f environment.yml
 
 | 追蹤（框架） | 忽略（資料／知識） |
 |-------------|-------------------|
-| `.claude/CLAUDE.md`、`.claude/agents/`、`.claude/commands/` | `.claude/skills/*/` 實際內容、`.claude/agent-memory/` |
+| `.claude/CLAUDE.md`、`.claude/agents/`、`.claude/commands/` | `.claude/skills-on-demand/*/` 實際內容、`.claude/agent-memory/` |
 | `shared/tools/`、`shared/workflows/`、`shared/protocols/` | `shared/kb/` 全部、`shared/workflows/state/` |
 | `projects/_template/` | `projects/*/` 實際專案資料 |
 | `environment.yml`、`init.py`、`.env.example`、`.mcp.json.example` | `.env`、`.mcp.json`、`*.db`、`*.xlsx`、`*.pdf` |

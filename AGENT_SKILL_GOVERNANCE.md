@@ -142,10 +142,17 @@ update all affected references, including where applicable:
 | `report-builder` | internal | local-only | overlay | company reporting/template overlay |
 | `questionnaire-response-drafter` | internal | local-only | keep | customer/internal drafting |
 | `promoter` | internal | local-only | keep | local KB/skill promotion policy |
-| `ingest-archiver` | internal | local-only | candidate_future_generic | still tied to local ingestion pipeline |
-| `ingest-structure-detector` | internal | local-only | candidate_future_generic | still tied to local ingestion pipeline |
-| `ingest-db-writer` | internal | local-only | candidate_future_generic | still tied to local ingestion contract |
-| `ingest-validator` | internal | local-only | candidate_future_generic | still tied to local ingestion checks |
+| `ingest-archiver` | internal | local-only | candidate_future_generic | pure copy+sha256; graduate when embedded-rule sync removes internal coupling |
+| `ingest-structure-detector` | internal | local-only | candidate_future_generic | structure probe; graduate once detector drops internal format heuristics |
+| `ingest-db-writer` | internal | local-only | candidate_future_generic | idempotent writer; graduate once write contract is fully schema-driven |
+| `ingest-validator` | internal | local-only | candidate_future_generic | post-ingest checks; graduate once validators are externalised to handoff schemas |
+
+Graduation criterion for the four ingest agents above: they keep `internal +
+candidate_future_generic` until their **sole remaining internal surface is the
+embedded-rule block injected by `sync_agent_rules.py`**. Once an agent's body
+contains no company-specific format heuristics, file-path conventions, or DB
+naming assumptions, `architect` splits it into a generic engine + internal
+overlay (same pattern as `ingest-exclusion-engine` + `bom-ingest-exclusion-applier`).
 
 ### Skills
 

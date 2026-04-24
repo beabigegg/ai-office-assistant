@@ -17,7 +17,7 @@
 
 ## 使用的 Skills
 
-> 列出此專案依賴的 Skills（.claude/skills/ 中的）。
+> 列出此專案依賴的 Skills（.claude/skills-on-demand/ 中的）。
 
 - （按需列出）
 

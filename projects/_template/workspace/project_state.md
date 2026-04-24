@@ -15,7 +15,7 @@
 ## 活躍任務
 <!-- block: tasks | max: 15 lines -->
 
-- [ ] {任務描述}（knowledge 型直接列；project_management 型用 `python shared/tools/backlog.py list --status open`）
+- [ ] {任務描述}（knowledge 型直接列；project_management 型用 `bash shared/tools/conda-python.sh shared/tools/backlog.py list --status open`）
 
 ## 資料庫現況
 <!-- block: db_status | max: 10 lines -->
@@ -43,6 +43,6 @@
 
 ---
 <!-- 延伸資料指針（不計入行數限制） -->
-- 決策鏈：`python shared/tools/kb.py search "<主題>"`
+- 決策鏈：`bash shared/tools/conda-python.sh shared/tools/kb.py search "<主題>"`
 - 歷史：`workspace/project_history.md`
-- project_management 型任務：`python shared/tools/backlog.py list`
+- project_management 型任務：`bash shared/tools/conda-python.sh shared/tools/backlog.py list`

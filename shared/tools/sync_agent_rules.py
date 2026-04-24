@@ -20,9 +20,9 @@ node-agent markdown at:
 The agent->node mapping is configurable via NODE_AGENT_MAP below.
 
 Usage:
-    python shared/tools/sync_agent_rules.py --dry-run
-    python shared/tools/sync_agent_rules.py --apply
-    python shared/tools/sync_agent_rules.py --workflow data_ingestion --apply
+    bash shared/tools/conda-python.sh shared/tools/sync_agent_rules.py --dry-run
+    bash shared/tools/conda-python.sh shared/tools/sync_agent_rules.py --apply
+    bash shared/tools/conda-python.sh shared/tools/sync_agent_rules.py --workflow data_ingestion --apply
 
 Design notes:
 - The delimited section `## 內嵌規則` ... (up to next `## ` heading or EOF)
@@ -43,7 +43,7 @@ from typing import Dict, List, Tuple
 try:
     import yaml  # type: ignore
 except ImportError:
-    print("[ERROR] PyYAML is required. `conda run -n ai-office pip install pyyaml`")
+    print("[ERROR] PyYAML is required. Install via conda env ai-office: `bash shared/tools/conda-python.sh -m pip install pyyaml`")
     sys.exit(2)
 
 ROOT = Path(__file__).resolve().parent.parent.parent
@@ -142,7 +142,7 @@ def render_rules_block(workflow: str, node_id: str,
     lines.append(f"<!-- synced from .claude/skills-on-demand/*/.skill.yaml "
                  f"applies_to_nodes[workflow={workflow}, node={node_id}] -->")
     lines.append(f"<!-- DO NOT EDIT BY HAND. Run: "
-                 f"python shared/tools/sync_agent_rules.py --apply -->")
+                 f"bash shared/tools/conda-python.sh shared/tools/sync_agent_rules.py --apply -->")
     lines.append("")
 
     if not contributions:

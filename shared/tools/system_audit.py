@@ -26,8 +26,54 @@ DOC_PATHS = [
     ROOT / "LOCAL_INTERNAL_SETUP.md",
     ROOT / "AGENTS.md",
     ROOT / "AGENT_SKILL_GOVERNANCE.md",
+    ROOT / "SETUP.md",
     CLAUDE_DIR / "CLAUDE.md",
 ]
+
+# Broader scan targets for stale-structure audits (file-path / placeholder /
+# execution contract). These are files where residual violations have been
+# observed historically; keep this list explicit so false positives stay bounded.
+EXTENDED_SCAN_FILES = [
+    ROOT / "init.py",
+    ROOT / "README.md",
+    ROOT / "SETUP.md",
+    ROOT / "LOCAL_INTERNAL_SETUP.md",
+    ROOT / "AGENTS.md",
+    ROOT / "AGENT_SKILL_GOVERNANCE.md",
+    CLAUDE_DIR / "CLAUDE.md",
+    ROOT / "shared" / "protocols" / "skill_manifest_spec.md",
+    ROOT / "shared" / "tools" / "TOOL_LINEAGE.md",
+    ROOT / "shared" / "tools" / "check_sot_ld.py",
+    ROOT / "shared" / "tools" / "sync_agent_rules.py",
+    ROOT / "projects" / "_template" / "project.md",
+    ROOT / "projects" / "_template" / "workspace" / "project_state.md",
+]
+EXTENDED_SCAN_GLOBS = [
+    ("shared/kb/external", "*.json"),
+]
+
+# Paths allowed to still mention the legacy '.claude/skills/' directory for
+# historic / compat reasons. Keep this set minimal.
+LEGACY_SKILLS_PATH_ALLOWED = {
+    ROOT / "AGENT_SKILL_GOVERNANCE.md",  # may reference historic layout in change logs
+    CLAUDE_DIR / "agent-memory" / "architect" / "MEMORY.md",
+}
+
+# Paths allowed to still show bare `python shared/...` or `conda run` as a
+# cross-platform installation hint (very narrow exception).
+PYTHON_CONTRACT_ALLOWED = {
+    ROOT / "README.md",  # README may show both shells for external readers
+    ROOT / "environment.yml",
+}
+
+# Paths allowed to mention `{P}` / `conda run` in prose ONLY for the purpose of
+# telling readers never to use those patterns. These files are prohibition
+# documentation, not violations. Keep minimal and review when editing.
+META_PROHIBITION_DOCS = {
+    ROOT / "AGENTS.md",
+    CLAUDE_DIR / "CLAUDE.md",
+    ROOT / "AGENT_SKILL_GOVERNANCE.md",
+}
 
 FORBIDDEN_WORKFLOW_DELEGATES = {
     "report-builder": "generic Office work must route through office-report-engine",
@@ -245,6 +291,96 @@ def audit_governance() -> Tuple[List[str], List[str]]:
     return errors, warns
 
 
+def _collect_extended_scan_paths() -> List[Path]:
+    paths: List[Path] = [p for p in EXTENDED_SCAN_FILES if p.exists()]
+    for rel_dir, pattern in EXTENDED_SCAN_GLOBS:
+        base = ROOT / rel_dir
+        if not base.exists():
+            continue
+        paths.extend(sorted(base.rglob(pattern)))
+    return paths
+
+
+def audit_structural_drift() -> Tuple[List[str], List[str]]:
+    """Catch residual drift in file paths, placeholders, and execution contract.
+
+    Rules enforced:
+      D1 - legacy `.claude/skills/` path (new canonical: `.claude/skills-on-demand/`)
+      D2 - bare `{P}` placeholder (must be `{PROJECT_ID}` or `{PROJECT_ROOT}`)
+      D3 - `python shared/...` invocation (must be `bash shared/tools/conda-python.sh shared/...`)
+      D4 - `conda run` invocation (must route via conda-python.sh)
+    """
+    errors: List[str] = []
+    warns: List[str] = []
+
+    scan_paths = _collect_extended_scan_paths()
+
+    # D1: legacy skills path
+    legacy_skills_re = re.compile(r"\.claude/skills/(?!on-demand)")
+    for path in scan_paths:
+        if path in LEGACY_SKILLS_PATH_ALLOWED:
+            continue
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        for idx, line in enumerate(text.splitlines(), start=1):
+            if legacy_skills_re.search(line):
+                errors.append(
+                    f"legacy skills path: {path.relative_to(ROOT)}:{idx} uses .claude/skills/ (expected .claude/skills-on-demand/)"
+                )
+
+    # D2: bare {P} placeholder (not {PROJECT_ID} / {PROJECT_ROOT})
+    bare_p_re = re.compile(r"\{P\}")
+    for path in scan_paths:
+        if path in META_PROHIBITION_DOCS:
+            continue
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        for idx, line in enumerate(text.splitlines(), start=1):
+            if bare_p_re.search(line):
+                errors.append(
+                    f"legacy placeholder: {path.relative_to(ROOT)}:{idx} uses {{P}} (expected {{PROJECT_ID}} or {{PROJECT_ROOT}})"
+                )
+
+    # D3: bare `python shared/...` (should be bash shared/tools/conda-python.sh shared/...)
+    python_shared_re = re.compile(r"(?<![./\w-])python\s+shared/")
+    for path in scan_paths:
+        if path in PYTHON_CONTRACT_ALLOWED:
+            continue
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        for idx, line in enumerate(text.splitlines(), start=1):
+            if python_shared_re.search(line):
+                # conda-python.sh itself is the canonical form, skip it
+                if "conda-python.sh" in line:
+                    continue
+                errors.append(
+                    f"execution contract drift: {path.relative_to(ROOT)}:{idx} uses bare `python shared/...` (expected `bash shared/tools/conda-python.sh shared/...`)"
+                )
+
+    # D4: `conda run` invocation
+    conda_run_re = re.compile(r"\bconda\s+run\b")
+    for path in scan_paths:
+        if path in PYTHON_CONTRACT_ALLOWED or path in META_PROHIBITION_DOCS:
+            continue
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        for idx, line in enumerate(text.splitlines(), start=1):
+            if conda_run_re.search(line):
+                errors.append(
+                    f"execution contract drift: {path.relative_to(ROOT)}:{idx} uses `conda run` (expected `bash shared/tools/conda-python.sh ...`)"
+                )
+
+    return errors, warns
+
+
 def audit_data_ingestion_contracts() -> Tuple[List[str], List[str]]:
     errors: List[str] = []
     warns: List[str] = []
@@ -348,6 +484,9 @@ def main() -> int:
     ingestion_errors, ingestion_warns = audit_data_ingestion_contracts()
     errors.extend(ingestion_errors)
     warns.extend(ingestion_warns)
+    drift_errors, drift_warns = audit_structural_drift()
+    errors.extend(drift_errors)
+    warns.extend(drift_warns)
 
     print("== Agent Office Audit ==")
     print(f"agents: {len(agent_names)}")

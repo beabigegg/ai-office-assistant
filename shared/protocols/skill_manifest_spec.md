@@ -1,6 +1,6 @@
 # Skill Manifest 規範 v1.0
 
-> 每個 `.claude/skills/{name}/` 除了 SKILL.md 外，必須有 `.skill.yaml`。
+> 每個 `.claude/skills-on-demand/{name}/` 除了 SKILL.md 外，必須有 `.skill.yaml`。
 > Manifest 提供機器可讀的元資料，讓 Leader 能自動匹配任務到 Skill。
 
 ---
@@ -8,8 +8,8 @@
 ## 檔案位置
 
 ```
-.claude/skills/{skill-name}/
-├── SKILL.md          # 人類可讀的規則文件（Claude Code 自動發現）
+.claude/skills-on-demand/{skill-name}/
+├── SKILL.md          # 人類可讀的規則文件（按需讀取）
 ├── .skill.yaml       # 機器可讀的 Manifest（本規範定義）
 └── references/       # 詳細參考資料
 ```

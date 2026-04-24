@@ -82,6 +82,16 @@ These are intended overlays, not future generic targets.
     - `in_progress` / `proposed` / cooldown outcomes prevent indefinite re-enqueueing
     - queue/history read-modify-write paths now use per-file advisory locking
   - Added skill-read usage tracking to feed promotion maturity from real SKILL.md usage.
+  - Cleared the remaining architecture drift in framework docs/templates/tools:
+    - standardized `.claude/skills-on-demand/` references across setup, templates, and protocol docs
+    - standardized repo Python invocation examples to `bash shared/tools/conda-python.sh ...`
+    - removed residual `{P}` placeholder usage from active framework guidance
+  - Expanded `system_audit.py` from governance-only checks to structural-drift checks:
+    - legacy skill path detection
+    - legacy placeholder detection
+    - Windows execution contract drift detection (bare repo-Python invocations / `conda run`)
+    - bounded scan coverage for templates, protocol docs, tool docs, and external JSON references
+  - Clarified that the four `data_ingestion` runtime agents remain active `candidate_future_generic` assets until only embedded-rule coupling remains before split graduation.
 
 ## Next Optimization Priorities
 

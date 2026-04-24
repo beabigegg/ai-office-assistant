@@ -4,10 +4,10 @@ SOT-LD (Single Source of Truth - Layered Dependency) Compliance Checker
 
 Scans the repo for violations of the four-tier SOT-LD architecture:
 
-    Tier 1: shared/tools/bom_parser.py        - cross-project shared parsers
-    Tier 2: {P}/workspace/scripts/X_utils.py  - project-internal shared logic
-    Tier 3: {P}/workspace/scripts/*.py        - report scripts
-    Tier 4: vault/outputs/                    - pure presentation
+    Tier 1: shared/tools/bom_parser.py                  - cross-project shared parsers
+    Tier 2: {PROJECT_ROOT}/workspace/scripts/X_utils.py - project-internal shared logic
+    Tier 3: {PROJECT_ROOT}/workspace/scripts/*.py       - report scripts
+    Tier 4: {PROJECT_ROOT}/vault/outputs/               - pure presentation
 
 Violations detected:
     V1 - Tier 1 function redefined (should import from bom_parser.py)
@@ -16,9 +16,9 @@ Violations detected:
     V4 - Hardcoded legacy path D:\\AI_test (warning)
 
 Usage:
-    python shared/tools/check_sot_ld.py
-    python shared/tools/check_sot_ld.py --project ecr-ecn
-    python shared/tools/check_sot_ld.py --strict      # V4 also counts as error
+    bash shared/tools/conda-python.sh shared/tools/check_sot_ld.py
+    bash shared/tools/conda-python.sh shared/tools/check_sot_ld.py --project ecr-ecn
+    bash shared/tools/conda-python.sh shared/tools/check_sot_ld.py --strict      # V4 also counts as error
 
 Exit code:
     0 = no V1/V2/V3 violations (V4 warnings allowed unless --strict)

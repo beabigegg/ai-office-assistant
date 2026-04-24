@@ -390,7 +390,7 @@ CREATE TABLE IF NOT EXISTS learnings (
 """
 
 # --- Skill 範本 ---
-TEMPLATES[".claude/skills/_skill_template/.skill.yaml"] = """\
+TEMPLATES[".claude/skills-on-demand/_skill_template/.skill.yaml"] = """\
 name: my-skill-name
 version: "1.0"
 category: analysis          # analysis | testing | coding | reporting
@@ -422,7 +422,7 @@ tested_scenarios: 0
 last_updated: "YYYY-MM-DD"
 """
 
-TEMPLATES[".claude/skills/_skill_template/SKILL.md"] = """\
+TEMPLATES[".claude/skills-on-demand/_skill_template/SKILL.md"] = """\
 ---
 name: my-skill-name
 description: 一句話描述

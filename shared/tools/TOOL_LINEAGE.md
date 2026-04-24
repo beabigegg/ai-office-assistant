@@ -5,7 +5,7 @@
 ## 架構原則（SOT-LD）
 
 ```
-原始資料 ──→ Tier 1 shared/tools/ ──→ Tier 2 {P}/scripts/ ──→ Tier 3 報告腳本 ──→ Tier 4 輸出
+原始資料 ──→ Tier 1 shared/tools/ ──→ Tier 2 {PROJECT_ROOT}/workspace/scripts/ ──→ Tier 3 報告腳本 ──→ Tier 4 輸出
    ↑                  ↑                        ↑                       ↑
  唯一入口          跨專案共用               專案內共用              本報告特有
  不可繞過          無狀態解析              業務邏輯轉換             篩選/聚合
@@ -13,7 +13,7 @@
 
 **寫新腳本前必查**：
 1. 我需要的解析函式 Tier 1 有嗎？→ 查 bom_parser.py
-2. 業務邏輯 Tier 2 有嗎？→ 查 {P}_utils.py
+2. 業務邏輯 Tier 2 有嗎？→ 查 {PROJECT_ID}_utils.py
 3. 有就 import，無就新增到對應層，**禁止橫向複製**
 
 ---
@@ -48,7 +48,7 @@
 | **Consumes** | `.claude/skills-on-demand/*/.skill.yaml` 的 `applies_to_nodes` 欄位（source of truth） |
 | **Produces** | 改寫 `.claude/agents/<name>.md` 中 `<!-- AUTO-GENERATED:embedded_rules BEGIN/END -->` 之間的內容 |
 | **Key functions** | `collect_skill_rules()` `render_rules_block()` `patch_agent_file()` |
-| **CLI** | `python shared/tools/sync_agent_rules.py --dry-run` 預覽；`--apply` 寫入；`--workflow <name>` 限定範圍 |
+| **CLI** | `bash shared/tools/conda-python.sh shared/tools/sync_agent_rules.py --dry-run` 預覽；`--apply` 寫入；`--workflow <name>` 限定範圍 |
 | **規則** | Skill `.skill.yaml` 是 source of truth，agent 的內嵌規則是派生物；任何內嵌規則的修改都必須先改 Skill，再跑 sync |
 | **Node 對應** | `shared/tools/sync_agent_rules.py::NODE_AGENT_MAP` 定義 `(workflow, node_id) → agent basename` |
 | **擴充方式** | 新增節點/agent 時先更新 `NODE_AGENT_MAP`，再跑 sync |
