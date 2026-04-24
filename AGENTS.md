@@ -11,6 +11,8 @@ This repository extends Claude Code CLI into an office assistant. Future agent w
 - Use `bash shared/tools/conda-python.sh ...` for repo Python commands so Windows + conda + UTF-8 behavior stays stable.
 - `shared/workflows/state/current.json` is the only live workflow state file.
 - `shared/kb/knowledge_graph/kb_index.db` is the source of truth. Markdown under `shared/kb/` is export/read surface, not authority.
+- Agent / skill governance is defined in `AGENT_SKILL_GOVERNANCE.md`.
+- New agents or skills may only be created by `architect` after the trigger conditions in `AGENT_SKILL_GOVERNANCE.md` are met.
 
 ## Workflow Contracts
 
@@ -30,6 +32,48 @@ This repository extends Claude Code CLI into an office assistant. Future agent w
 - `knowledge_lifecycle` validates exact `kb_entry_ids` in DB.
 - `data_ingestion` now requires batch evidence for exclusion, ingest, schema refresh, and post-validation.
 
+## Governance Baseline (2026-04-24)
+
+- Agent / skill governance is now formalized in `AGENT_SKILL_GOVERNANCE.md`.
+- Structural lifecycle authority is now explicitly assigned to `architect`.
+- New generic engines were split out from internal overlays:
+  - `office-report-engine` from `report-builder`
+  - `ingest-exclusion-engine` from `bom-ingest-exclusion-applier`
+  - `automotive-reliability-standards` from `reliability-testing`
+- Internal assets are classified as `local-only`; generic assets are the tracked framework baseline.
+
+### Current Transitional Items
+
+- `compat`
+  - `reliability-testing`
+    Keep only as a compatibility shim. No new direct dependencies should point to it.
+
+- `candidate_future_generic`
+  - `ingest-archiver`
+  - `ingest-structure-detector`
+  - `ingest-db-writer`
+  - `ingest-validator`
+    These are still internal today, but structurally look like possible future generic ingestion pipeline components.
+
+### Current Overlay Items
+
+- `bom-ingest-exclusion-applier`
+- `report-builder`
+- `internal-reliability-practice`
+- `pptx-template`
+
+These are intended overlays, not future generic targets.
+
+## Change Log
+
+- `2026-04-24`
+  - Added formal agent/skill governance and lifecycle rules.
+  - Split three high-risk mixed assets into generic engine/core plus internal overlay:
+    - `reliability-testing`
+    - `bom-ingest-exclusion-applier`
+    - `report-builder`
+  - Added `system_audit.py` and kept runtime consistency green after the split.
+
 ## Next Optimization Priorities
 
 1. Real-world test `data_ingestion` on an actual new file import.
@@ -43,3 +87,4 @@ This repository extends Claude Code CLI into an office assistant. Future agent w
 - Do not make markdown files authoritative again.
 - Do not rely on `conda run ...` for workflow execution on Windows.
 - Do not add workflow documentation that is not backed by engine enforcement or validator checks.
+- Do not create new agents or skills ad-hoc; route all such structural changes through `architect`.

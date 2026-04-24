@@ -1,5 +1,7 @@
 ---
 name: pptx-operations
+scope: generic
+tracking: tracked
 description: |
   WHAT：透過 mcp__pptx__* 工具（COM 自動化）精修已有 .pptx，處理原生圖表、複雜表格、版面調整。
   WHEN：修改現有簡報、add_chart 原生可編輯圖表、20+ 欄 add_table、delete_shape 清理 placeholder。

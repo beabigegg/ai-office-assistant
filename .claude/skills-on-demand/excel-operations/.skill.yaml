@@ -1,0 +1,69 @@
+name: excel-operations
+version: "1.0"
+category: tool-operation
+description: "MCP Excel Server 操作規則（COM API 模式、日期處理、批次寫入、大範圍讀取限制、樣式預設、條件格式）"
+
+triggers:
+  keywords:
+    - "Excel"
+    - "XLSX"
+    - "xlsx"
+    - "試算表"
+    - "工作表"
+    - "mcp__xlsx"
+    - "儲存格"
+    - "spreadsheet"
+    - "workbook"
+  tool_patterns:
+    - "mcp__xlsx__*"
+
+requires:
+  tools:
+    - mcp__xlsx__create_workbook
+    - mcp__xlsx__open_workbook
+    - mcp__xlsx__save_workbook
+    - mcp__xlsx__close_workbook
+    - mcp__xlsx__read_range
+    - mcp__xlsx__write_range
+    - mcp__xlsx__format_range
+    - mcp__xlsx__apply_style_preset
+    - mcp__xlsx__auto_fit_columns
+    - mcp__xlsx__add_conditional_format
+  server:
+    - shared/tools/mcp_xlsx_server.py
+
+constraints:
+  must:
+    - "開啟/建立活頁簿後才能操作工作表和儲存格"
+    - "read_range 大範圍限制 500 行回傳，超過會截斷"
+    - "write_range 用 tuple of tuples 批次寫入（Resize pattern）"
+    - "日期值自動轉 ISO 格式字串"
+    - "操作完成後 save_workbook 儲存"
+    - "結束時 close_workbook 釋放 COM"
+    - "優先使用 apply_style_preset 而非逐一 format_range + add_borders"
+  must_not:
+    - "在未開啟活頁簿時嘗試讀寫儲存格"
+    - "一次讀取超大範圍（超過 500 行應分批）"
+    - "忘記 close_workbook 導致 Excel 程序殘留"
+
+rules_count: 11
+confidence: high
+tested_scenarios: 0
+last_updated: "2026-03-04"
+source: "基於 mcp_pptx_server.py 架構模式設計，v2 新增 auto_fit/style_preset/conditional_format/read_cell_format"
+
+applies_to_nodes:
+  - workflow: data_ingestion
+    nodes: [detect_structure, apply_exclusions]
+    rules:
+      - |
+        Merged-cell rule: before matching/JOIN on Excel data, inspect
+        `ws.merged_cells.ranges`, unmerge the regions and forward-fill values
+        so every cell carries the value (not just the top-left).
+        2026-04-09 打帶跑分析曾有 21 筆因未 unmerge 匹配失敗。
+      - |
+        Encoding: Windows Excel may be Big5/CP950/UTF-8 BOM — detect with
+        `chardet` before reading CSV/TSV.
+      - |
+        Large-range reads: split into batches of 500 rows or fewer;
+        `openpyxl` `read_only=True` + `iter_rows` for bulk ingest.

@@ -1,0 +1,26 @@
+name: docx-authoring
+version: "1.0"
+category: authoring
+description: "以 docx-js 從零建立或精修 Word 文件"
+
+triggers:
+  keywords:
+    - "docx-js"
+    - "Word 新建"
+    - "正式函文"
+    - "測試報告 docx"
+    - "TOC"
+    - "footnotes"
+    - "tracked changes"
+
+requires:
+  tools: []
+  related_skills:
+    - word-operations
+
+constraints:
+  must_not:
+    - "把簡單增量編輯任務誤送到 docx-authoring"
+
+confidence: high
+last_updated: "2026-04-23"

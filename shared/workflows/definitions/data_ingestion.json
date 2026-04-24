@@ -37,7 +37,7 @@
     {
       "id": "apply_exclusions",
       "description": "Apply data exclusion rules if needed (exclusion is project-specific, not at ingestion time)",
-      "instruction": "Delegate to ingest-exclusion-applier agent. Brief: apply RD-/PE-/EOL/MBU3/MBU2/GD/PM-EOL exclusions, handle PANJIT -AU suffix (digit2=Z check), produce operation_id. Complete with: --outputs '{\"operation_id\":\"xxx\"}'.",
+      "instruction": "Delegate to ingest-exclusion-engine agent. Brief: apply the confirmed exclusion_policy, normalize merged cells before matching, produce operation_id, and return rows_in/rows_out/exclusion_summary. If company-specific BOM/ECR exclusion rules are required, consult the local overlay agent/skill first, then execute via the engine. Complete with: --outputs '{\"operation_id\":\"xxx\"}'.",
       "depends_on": ["confirm_with_user"],
       "required": true,
       "required_outputs": [

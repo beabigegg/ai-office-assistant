@@ -24,9 +24,9 @@
 | 領域判斷（規範、BOM、可靠性） | Leader 自己（語意搜尋 → 按需 Read Skill/Decision） |
 | 純資料操作、小量 SQL、知識記錄 | Leader 自己 |
 | 大量 SQL 查詢結果 | `query-runner` |
-| Office 報告建立/修改 | `report-builder` |
+| Office 報告建立/修改 | `office-report-engine`（公司模板/公司視覺語言再 consult `report-builder`） |
 | PDF 複雜表格（合併、跨頁） | `table-reader` |
-| 批量 LLM API（>20 項） | `response-drafter` |
+| 批量 LLM API（>20 項） | `questionnaire-response-drafter` |
 | 系統架構變更、大量掃描、/evolve | `architect` |
 | data_ingestion 每個節點 | 對應 `ingest-*` agent（節點 instruction 含委派說明） |
 | 需 Teammate 互傳訊息、並行競爭假設 | Agent Teams（`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`） |
@@ -91,6 +91,7 @@ shared/kb/{dynamic,external,memory}/    ← 匯出品 / 外部標準摘要 / 會
 - **冪等 + 追溯**：DB 寫入帶 `_operation_id/_source_file/_source_version/_source_row`（ingest-* agent 內建）
 - **Stop hook**：post_task required 節點未完成不得結束對話
 - **Skill-First**：新需求先問「有沒有 Skill 或 `shared/tools/` 工具可完成？」。有則用，無則評估是否補建 Skill/工具。**禁止**為單次需求在 `projects/*/scripts/` 建立一次性腳本；若確實需要專案腳本，必須說明為何不可複用。
+- **Architect-Only Lifecycle**：新 agent / skill 的建立、改名、拆分、整併、退休，一律先交 `architect`。只有在 `AGENT_SKILL_GOVERNANCE.md` 的觸發條件成立後，才可新增 agent/skill。
 
 ---
 

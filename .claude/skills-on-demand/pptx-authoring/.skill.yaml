@@ -1,0 +1,26 @@
+name: pptx-authoring
+version: "1.0"
+category: authoring
+description: "以 pptxgenjs 從零建立自由設計的可編輯 PPTX"
+
+triggers:
+  keywords:
+    - "pptxgenjs"
+    - "pptx-js"
+    - "新建 pptx"
+    - "從零建立簡報"
+    - "程式化簡報"
+    - "自由設計"
+
+requires:
+  tools: []
+  related_skills:
+    - pptx-template
+    - pptx-operations
+
+constraints:
+  must_not:
+    - "把公司模板或既有簡報精修任務混進 pptx-authoring"
+
+confidence: high
+last_updated: "2026-04-23"

@@ -1,0 +1,28 @@
+name: skill-creator
+version: "1.0"
+category: meta
+description: "建立新 Skill、改善現有 Skill、執行觸發率與品質評測"
+
+triggers:
+  keywords:
+    - "skill-creator"
+    - "建立 skill"
+    - "新增 skill"
+    - "改善 skill"
+    - "run_eval"
+    - "run_loop"
+    - "generate_report"
+    - "skill eval"
+
+requires:
+  agents:
+    - skill-eval-grader
+    - skill-eval-comparator
+    - skill-eval-analyzer
+
+constraints:
+  must:
+    - "新 Skill 建立後同步補齊 SKILL.md 與 .skill.yaml"
+
+confidence: high
+last_updated: "2026-04-23"

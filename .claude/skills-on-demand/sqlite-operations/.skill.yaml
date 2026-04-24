@@ -1,0 +1,49 @@
+name: sqlite-operations
+version: "1.0"
+category: tool-operation
+description: "Windows Git Bash 環境下 SQLite 操作的防錯規則（編碼、引號、腳本模式、查詢模式）"
+
+triggers:
+  keywords:
+    - "SQLite"
+    - "sqlite3"
+    - ".db"
+    - "SQL"
+    - "python -c"
+    - "query"
+    - "SELECT"
+    - "INSERT"
+
+constraints:
+  must:
+    - "中文輸出前強制 UTF-8 stdout/stderr"
+    - "複雜查詢寫 .py 腳本而非 python -c"
+    - "SQL 字串一律用單引號，Python 字串用雙引號"
+    - "meta/config 解析結果確保型別正確（list vs str）"
+  must_not:
+    - "python -c 內混用雙引號包 SQL 字串"
+    - "在 bash 中用 != 不轉義（會被 shell 解釋）"
+    - "假設 console 能正確輸出中文（cp950 限制）"
+    - "在 python -c 中寫超過 10 行的邏輯"
+
+rules_count: 8
+confidence: high
+tested_scenarios: 5
+last_updated: "2026-03-05"
+source: "2026-03-05 kb_index.py 開發過程中 4 次失敗案例歸納"
+
+applies_to_nodes:
+  - workflow: data_ingestion
+    nodes: [ingest_to_db, post_validation]
+    rules:
+      - |
+        R1: Force UTF-8 stdout/stderr on Windows before any Chinese output —
+        `sys.stdout.reconfigure(encoding='utf-8')` 或重開 fd 寫法。
+      - |
+        R2: Complex queries → write a `.py` script, don't use `python -c`
+        (quote conflicts). 批次 INSERT 邏輯一定要寫成腳本。
+      - |
+        用 raw strings (`r'D:\path\to.db'`) for Windows DB paths to avoid
+        backslash escaping.
+      - |
+        meta/config 解析結果要確保型別正確（list vs str），避免 NULL/空字串混淆。

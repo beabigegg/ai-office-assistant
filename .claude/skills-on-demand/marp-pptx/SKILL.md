@@ -1,5 +1,7 @@
 ---
 name: marp-pptx
+scope: generic
+tracking: tracked
 description: |
   WHAT：用 Marp Markdown 生成 PPTX/PDF，走 marp_build.py + semicon.css 主題。
   WHEN：標題/目錄/摘要頁、KPI callout、雙欄、Markdown 大量內容轉簡報、PDF 分發。

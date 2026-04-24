@@ -1,5 +1,7 @@
 ---
 name: pdf
+scope: generic
+tracking: tracked
 description: |
   WHAT：PDF 基本操作（讀文字/表格、合併分割旋轉、新建 PDF、浮水印加密、OCR）。
   WHEN：一般 .pdf 檔案處理，pypdf/pdfplumber/reportlab 可解決的任務。

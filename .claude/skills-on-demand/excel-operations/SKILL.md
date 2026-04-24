@@ -1,5 +1,7 @@
 ---
 name: excel-operations
+scope: generic
+tracking: tracked
 description: |
   WHAT：透過 mcp__xlsx__* 工具（COM 自動化）對既有 Excel 做增量編輯。
   WHEN：開啟/修改現有 xlsx、改儲存格、套樣式、寫圖表、conditional format。
@@ -241,6 +243,16 @@ apply_style_preset(sheet="Sheet1", range="A2:H100", preset="data")
 | 大量資料逐格 write_cell | 用 write_range 批次寫入，效率差 10-100 倍 |
 | 格式化後才寫資料 | 先寫資料再格式化，避免格式被覆蓋 |
 | 混用多種顏色 | 只用標準色盤（見 report-builder.md DP2） |
+
+## R12：Ingestion 前的 Excel 正規化（信心度：high）
+
+當 Excel 被拿來做資料入庫前處理時：
+
+- 先檢查 `ws.merged_cells.ranges`
+- 比對、JOIN、prefix/status 過濾前要先 unmerge + forward-fill
+- 不可直接用合併儲存格的左上角值去代表整列資料
+
+這是通用 ingestion 技巧，不屬任何公司內規。
 
 ### Q3：多工作表報告規範
 - Sheet 命名有意義（"Summary", "Raw Data"），不留 "Sheet1"

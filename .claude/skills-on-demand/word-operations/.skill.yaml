@@ -1,0 +1,49 @@
+name: word-operations
+version: "1.0"
+category: tool-operation
+description: "MCP Word Server 操作規則（COM find_replace、段落索引、書籤操作、表格文字清理）"
+
+triggers:
+  keywords:
+    - "Word"
+    - "DOCX"
+    - "docx"
+    - "文件"
+    - "報告"
+    - "mcp__docx"
+    - "段落"
+    - "document"
+    - "word文件"
+  tool_patterns:
+    - "mcp__docx__*"
+
+requires:
+  tools:
+    - mcp__docx__create_document
+    - mcp__docx__open_document
+    - mcp__docx__save_document
+    - mcp__docx__close_document
+    - mcp__docx__append_paragraph
+    - mcp__docx__find_replace
+    - mcp__docx__add_table
+  server:
+    - shared/tools/mcp_docx_server.py
+
+constraints:
+  must:
+    - "開啟/建立文件後才能操作段落和表格"
+    - "段落和表格 index 從 1 開始（COM convention）"
+    - "find_replace 使用 COM Range.Find 處理 cross-run 文字"
+    - "read_table 時剝除尾端 \\r\\x07 控制字元"
+    - "操作完成後 save_document 儲存"
+    - "結束時 close_document 釋放 COM"
+  must_not:
+    - "在未開啟文件時嘗試操作內容"
+    - "使用 python-docx 的 find/replace（有 cross-run bug）"
+    - "忘記 close_document 導致 Word 程序殘留"
+
+rules_count: 8
+confidence: high
+tested_scenarios: 0
+last_updated: "2026-02-26"
+source: "基於 mcp_pptx_server.py 架構模式設計，解決 python-docx cross-run 問題"

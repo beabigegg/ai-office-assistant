@@ -1,5 +1,7 @@
 ---
 name: skill-eval-comparator
+scope: generic
+tracking: tracked
 description: >
   Performs blind A/B comparison of two skill execution outputs to determine
   which better accomplishes the eval task. Use when the skill-creator workflow

@@ -1,5 +1,7 @@
 ---
 name: docx-authoring
+scope: generic
+tracking: tracked
 description: |
   WHAT：用 docx-js（Node.js）從零新建 Word 文件，或 unpack/pack XML 精修既有文件。
   WHEN：需要 TOC、多欄、tracked changes、footnotes、精確格式控制的正式 Word 文件。

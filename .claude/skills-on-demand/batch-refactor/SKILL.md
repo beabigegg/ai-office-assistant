@@ -1,5 +1,7 @@
 ---
 name: batch-refactor
+scope: generic
+tracking: tracked
 description: |
   WHAT：大量變更任務的兩階段模式（Architect 出計畫 → general-purpose sub-agent 照單執行）。
   WHEN：單次任務需要修改 ≥5 個檔案、改動類型重複性高、需要 Leader 抽身做監督而非 hands-on。
@@ -100,7 +102,7 @@ Leader 呼叫 Architect 時應提供：
 | 純粹按計畫替換字串、新建/刪除檔案 | **general-purpose**（最通用、最便宜） |
 | 需要寫 Python/Node script 處理資料 | general-purpose（仍適合） |
 | 需要 SQL 查大量資料 | `query-runner` |
-| Office 檔案產出 | `report-builder` |
+| Office 檔案產出 | `office-report-engine` |
 | 架構判斷或掃描 | `architect`（不要在執行階段再用 architect） |
 
 **不要用的情境**：

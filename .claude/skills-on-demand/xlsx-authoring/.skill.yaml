@@ -1,0 +1,30 @@
+name: xlsx-authoring
+version: "1.0"
+category: authoring
+description: "以 openpyxl + pandas 從零建立 Excel 檔"
+
+triggers:
+  keywords:
+    - "openpyxl"
+    - "pandas to_excel"
+    - "Excel 新建"
+    - "xlsx 新建"
+    - "程式化 Excel"
+    - "公式優先"
+    - "工程數據表"
+
+requires:
+  tools:
+    - openpyxl
+    - pandas
+  related_skills:
+    - excel-operations
+
+constraints:
+  must:
+    - "優先寫公式，不要硬寫計算結果"
+  must_not:
+    - "把既有 xlsx 的增量編輯任務當成 xlsx-authoring"
+
+confidence: high
+last_updated: "2026-04-23"

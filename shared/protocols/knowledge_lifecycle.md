@@ -86,7 +86,7 @@
 ```markdown
 ## 相關 Skills
 - `process-bom-semantics`：本 Skill 的 BOM 層級規則依賴製程 BOM 的站別定義
-- `reliability-testing`：材料變更觸發 AEC-Q 驗證流程
+- `automotive-reliability-standards`：材料變更觸發 AEC-Q 驗證流程
 ```
 
 在 .skill.yaml 中使用 `requires.related_skills`：
@@ -94,7 +94,7 @@
 requires:
   related_skills:
     - process-bom-semantics  # BOM 層級定義
-    - reliability-testing     # 變更驗證流程
+    - automotive-reliability-standards  # 變更驗證流程
 ```
 
 ### 交叉引用規則
@@ -109,13 +109,13 @@ requires:
 ```
 bom-rules
   ├─ related: process-bom-semantics（製程細節）
-  └─ related: reliability-testing（變更驗證）
+  └─ related: automotive-reliability-standards（變更驗證）
 
 process-bom-semantics
   ├─ requires: bom-rules（BOM 基礎規則）
-  └─ related: reliability-testing（材料變更測試）
+  └─ related: automotive-reliability-standards（材料變更測試）
 
-reliability-testing
+automotive-reliability-standards
   ├─ related: bom-rules（物料識別）
   └─ related: process-bom-semantics（製程變更影響）
 ```
@@ -139,7 +139,7 @@ Promoter 在 `/promote` 時輸出：
 
 ```
 知識健康度摘要：
-- Layer 1 Skills：3 個（bom-rules, process-bom-semantics, reliability-testing）
+- Layer 1 Skills：3 個（bom-rules, process-bom-semantics, automotive-reliability-standards）
 - Layer 2 Active：15 條
 - Layer 2 Mature：3 條（待升級候選）
 - Layer 2 Stale：0 條

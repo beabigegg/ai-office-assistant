@@ -1,0 +1,27 @@
+name: batch-refactor
+version: "1.0"
+category: meta
+description: "大量重複性修改任務的兩階段模式（計畫與執行分離）"
+
+triggers:
+  keywords:
+    - "大量變更"
+    - "批次重構"
+    - "batch refactor"
+    - "統一格式"
+    - "多檔案編輯"
+    - "架構演進"
+    - "兩階段模式"
+
+requires:
+  agents:
+    - architect
+
+constraints:
+  must:
+    - "先產出明確變更計畫，再交由 executor 類 agent 逐檔執行"
+  must_not:
+    - "把需要深度跨檔案推理的重構完全外包給 executor"
+
+confidence: high
+last_updated: "2026-04-23"

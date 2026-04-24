@@ -54,7 +54,9 @@ AGENTS_DIR = ROOT / ".claude" / "agents"
 NODE_AGENT_MAP: Dict[Tuple[str, str], str] = {
     ("data_ingestion", "archive_original"): "ingest-archiver",
     ("data_ingestion", "detect_structure"): "ingest-structure-detector",
-    ("data_ingestion", "apply_exclusions"): "ingest-exclusion-applier",
+    # apply_exclusions uses a generic executor at runtime, but project-specific
+    # rule contributions still belong to the local overlay agent.
+    ("data_ingestion", "apply_exclusions"): "bom-ingest-exclusion-applier",
     ("data_ingestion", "ingest_to_db"): "ingest-db-writer",
     ("data_ingestion", "post_validation"): "ingest-validator",
 }

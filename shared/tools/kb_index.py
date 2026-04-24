@@ -88,7 +88,7 @@ _RULES_DETAIL_TEMPLATE = """### 規則明細（共 51 條）
 | R11 | METAL-CODING | AGAG, AUAU, ALAU, ALSN, 背金/背銀 |
 | R12 | BACKMETAL-DA | Sn→Eutectic, Ag→Epoxy, 搭配限制 |
 
-#### reliability-testing (15 = 8 base + 7 VR)
+#### reliability-testing / automotive-reliability-standards
 | ID | 名稱 | 關鍵詞 |
 |----|------|--------|
 | - | Q101-OVERVIEW | Test Group A~E, 測試概覽 |
@@ -146,6 +146,7 @@ _UPGRADE_HISTORY_TEMPLATE = """## 升級歷程摘要
 | 日期 | 動作 | 數量 |
 |------|------|------|
 | 2026-02-05 | 初建 bom-rules, process-bom-semantics, reliability-testing | 3 Skills |
+| 2026-04-24 | reliability-testing 開始拆分為 automotive-reliability-standards + internal overlay | 1 Skill split |
 | 2026-02-06 | 初建 package-code | 1 Skill |
 | 2026-02-09 | 初建 mil-std-750 | 1 Skill |
 | 2026-02-22 | 全量反例驗證 + R10~R12 新增 | process-bom-semantics 大修 |
@@ -399,6 +400,7 @@ class KBIndex:
             # Auto-detect cross-references in text
             # Skill references
             for skill_name in ['bom-rules', 'process-bom-semantics', 'reliability-testing',
+                               'automotive-reliability-standards',
                                'package-code', 'mil-std-750', 'pptx-operations']:
                 if skill_name in block.lower() and skill_name not in refs_skill:
                     refs_skill.append(skill_name)

@@ -1,5 +1,7 @@
 ---
 name: query-runner
+scope: generic
+tracking: tracked
 description: >
   SQL query executor and result summarizer for SQLite databases.
   Use proactively when the task involves:

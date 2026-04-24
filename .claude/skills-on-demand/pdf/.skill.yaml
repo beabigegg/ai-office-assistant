@@ -1,0 +1,29 @@
+name: pdf
+version: "1.0"
+category: tool-operation
+description: "PDF 基本操作與一般提取流程"
+
+triggers:
+  keywords:
+    - "PDF"
+    - ".pdf"
+    - "pdf 讀取"
+    - "pdf 提取"
+    - "pypdf"
+    - "pdfplumber"
+    - "reportlab"
+    - "OCR"
+    - "PDF 合併"
+    - "PDF 分割"
+
+requires:
+  tools: []
+  related_skills:
+    - plm-pdf-ingestion
+
+constraints:
+  must_not:
+    - "把合併儲存格或跨頁複雜表格硬塞到一般 PDF 路線"
+
+confidence: high
+last_updated: "2026-04-23"

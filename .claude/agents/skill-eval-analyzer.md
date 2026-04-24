@@ -1,5 +1,7 @@
 ---
 name: skill-eval-analyzer
+scope: generic
+tracking: tracked
 description: >
   Post-hoc analysis of blind comparison results to identify WHY the winning
   skill performed better and generate actionable improvement suggestions for

@@ -1,5 +1,7 @@
 ---
 name: xlsx-authoring
+scope: generic
+tracking: tracked
 description: |
   WHAT：用 openpyxl + pandas（code-based）從零新建 Excel 檔，強制公式優先、禁 hardcode 計算值。
   WHEN：程式化產出 xlsx、工程數據表、成本分析、月報產出。

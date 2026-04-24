@@ -1,0 +1,50 @@
+name: pptx-operations
+version: "1.0"
+category: tool-operation
+description: "MCP PPTX Server v2 操作規則（COM API 限制、預設元素清理、圖表寫入模式）"
+
+triggers:
+  keywords:
+    - "PPT"
+    - "PPTX"
+    - "簡報"
+    - "PowerPoint"
+    - "投影片"
+    - "mcp__pptx"
+    - "add_chart"
+    - "add_slide"
+    - "add_rich_textbox"
+    - "圖表"
+    - "slide"
+  tool_patterns:
+    - "mcp__pptx__*"
+
+requires:
+  tools:
+    - mcp__pptx__create_presentation
+    - mcp__pptx__save_presentation
+    - mcp__pptx__add_slide
+    - mcp__pptx__add_chart
+    - mcp__pptx__delete_shape
+    - mcp__pptx__get_slide_info
+  server:
+    - shared/tools/mcp_pptx_server.py
+
+constraints:
+  must:
+    - "新增空白投影片後必須刪除預設 Title placeholder (R1)"
+    - "add_chart 使用 AddChart 不用 AddChart2 (R2a)"
+    - "圖表資料寫入後 wb.Close(True) 觸發刷新 (R2c)"
+    - "多餘 Series 用 SeriesCollection.Delete() 清除 (R2c)"
+  must_not:
+    - "使用 chart.SetSourceData() (R2b)"
+    - "使用 AddChart2 (R2a)"
+    - "保留空白 placeholder 在最終簡報中 (R1)"
+
+rules_count: 8
+confidence: very high
+tested_scenarios: 5
+last_updated: "2026-02-22"
+source: "v2 功能驗證過程中的除錯經驗"
+upgrade_history:
+  - "2026-02-22: 初始建立 — 從 add_chart 除錯、placeholder 清理等實戰經驗整理"

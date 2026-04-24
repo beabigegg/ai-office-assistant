@@ -1,5 +1,7 @@
 ---
 name: skill-creator
+scope: generic
+tracking: tracked
 description: |
   WHAT：建立新 Skill、改善現有 Skill、執行觸發率與輸出品質評測。
   WHEN：從零建立 skill、優化 description、run_eval/run_loop 觸發率測試、grader/comparator 品質對比。
@@ -143,7 +145,7 @@ description: |
 .claude/skills-on-demand/<skill-name>/SKILL.md
 ```
 
-建立後在對應 agent（如 report-builder.md）的 Skill Loading 表格中登記。
+建立後在對應 agent（如 office-report-engine.md；若是公司模板 overlay 則為 report-builder.md）的 Skill Loading 表格中登記。
 
 ---
 

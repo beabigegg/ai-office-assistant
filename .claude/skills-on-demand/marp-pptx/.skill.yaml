@@ -1,0 +1,27 @@
+name: marp-pptx
+version: "1.0"
+category: authoring
+description: "用 Marp Markdown 生成 PPTX/PDF 的簡報產線"
+
+triggers:
+  keywords:
+    - "Marp"
+    - "marp-pptx"
+    - "marp_build"
+    - "Markdown 簡報"
+    - "md to pptx"
+    - "PDF 分發"
+    - "快速簡報"
+
+requires:
+  tools: []
+  related_skills:
+    - pptx-template
+    - pptx-operations
+
+constraints:
+  must_not:
+    - "把需要原生可編輯圖表或大型表格的簡報強塞進 Marp 路線"
+
+confidence: high
+last_updated: "2026-04-23"

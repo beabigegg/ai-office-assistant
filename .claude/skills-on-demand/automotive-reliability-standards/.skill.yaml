@@ -1,0 +1,36 @@
+name: automotive-reliability-standards
+version: "1.0"
+category: reference
+description: "汽車電子可靠性測試的通用標準層查詢入口（AEC-Q101/Q006/JESD22/MIL-STD）"
+
+triggers:
+  keywords:
+    - "AEC-Q101"
+    - "AEC-Q006"
+    - "Q101"
+    - "Q006"
+    - "可靠性"
+    - "HAST"
+    - "H3TRB"
+    - "HTSL"
+    - "HTGB"
+    - "WBP"
+    - "WBS"
+    - "Die Shear"
+    - "JESD22"
+    - "MIL-STD-750"
+    - "MIL-STD-883"
+    - "sample size"
+    - "fail criteria"
+
+requires:
+  tools: []
+
+constraints:
+  must:
+    - "只回答標準層與方法層，不引入公司內部規範或產品線裁剪"
+  must_not:
+    - "把公司內規、F-PE0404、ECR/ECN 映射混入 generic standards core"
+
+confidence: high
+last_updated: "2026-04-24"

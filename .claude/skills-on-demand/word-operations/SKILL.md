@@ -1,5 +1,7 @@
 ---
 name: word-operations
+scope: generic
+tracking: tracked
 description: |
   WHAT：透過 mcp__docx__* 工具（COM 自動化）對既有 Word 做增量編輯。
   WHEN：開啟/修改 .docx、find_replace 跨 run 搜尋取代、段落索引操作、書籤 write_at_bookmark。

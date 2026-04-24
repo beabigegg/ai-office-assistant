@@ -23,6 +23,7 @@ DECISIONS_PATH = ROOT / 'shared' / 'kb' / 'decisions.md'
 # Skills known to exist
 KNOWN_SKILLS = [
     'bom-rules', 'process-bom-semantics', 'reliability-testing',
+    'automotive-reliability-standards',
     'package-code', 'mil-std-750', 'pptx-operations',
     'excel-operations', 'word-operations'
 ]

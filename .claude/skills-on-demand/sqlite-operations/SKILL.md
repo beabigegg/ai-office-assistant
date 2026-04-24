@@ -1,5 +1,7 @@
 ---
 name: sqlite-operations
+scope: generic
+tracking: tracked
 description: |
   WHAT：Windows Git Bash 環境下 SQLite / Python 操作的防錯規則（編碼/引號/型別）。
   WHEN：寫 python -c 查 .db、寫 Python 腳本操作 SQLite、處理 UnicodeEncodeError。
@@ -136,6 +138,19 @@ python -c 'import sqlite3; ...'
 # ✓ 或在腳本中寫，避開 bash 解釋
 python my_script.py
 ```
+
+---
+
+## R9: Ingestion batch traceability（信心度：high）
+
+資料入庫型腳本若屬批次 ingestion，必須優先保證：
+
+- `operation_id` 可追蹤且唯一
+- 每列保留 `_operation_id`
+- 來源檔資訊保留 `_source_file` / `_source_version` / `_source_row`
+- 寫入前先做 idempotency 檢查，避免同一批重複插入
+
+這些是通用 SQLite ingestion hygiene，不屬特定公司規則。
 
 ---
 

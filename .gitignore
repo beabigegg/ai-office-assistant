@@ -47,9 +47,57 @@ shared/kb/evolution_proposals/
 !.claude/skills/.gitkeep
 
 # === Skills-on-demand 內容 ===
-# SKILL.md 為框架定義，納入 git 追蹤
-# .skill.yaml 為本機 eval 元數據，不追蹤
+# SKILL.md 目前多數仍已納入版本控管；.skill.yaml 只追蹤通用能力型 skill。
+# 帶有客戶/公司/專案業務知識的 skill metadata 維持本機，避免誤推。
+.claude/skills-on-demand/mil-std-750/
+.claude/skills-on-demand/graph-rag/
+.claude/skills-on-demand/mes-report/
+.claude/skills-on-demand/questionnaire-response/
+.claude/skills-on-demand/bom-rules/
+.claude/skills-on-demand/package-code/
+.claude/skills-on-demand/process-bom-semantics/
+.claude/skills-on-demand/reliability-testing/
+.claude/skills-on-demand/internal-reliability-practice/
+.claude/skills-on-demand/plm-pdf-ingestion/
+.claude/skills-on-demand/pptx-template/
 .claude/skills-on-demand/*/.skill.yaml
+!.claude/skills-on-demand/excel-operations/.skill.yaml
+!.claude/skills-on-demand/word-operations/.skill.yaml
+!.claude/skills-on-demand/pptx-operations/.skill.yaml
+!.claude/skills-on-demand/sqlite-operations/.skill.yaml
+!.claude/skills-on-demand/marp-pptx/.skill.yaml
+!.claude/skills-on-demand/xlsx-authoring/.skill.yaml
+!.claude/skills-on-demand/docx-authoring/.skill.yaml
+!.claude/skills-on-demand/pdf/.skill.yaml
+!.claude/skills-on-demand/skill-creator/.skill.yaml
+!.claude/skills-on-demand/pptx-authoring/.skill.yaml
+!.claude/skills-on-demand/batch-refactor/.skill.yaml
+!.claude/skills-on-demand/automotive-reliability-standards/
+!.claude/skills-on-demand/automotive-reliability-standards/SKILL.md
+!.claude/skills-on-demand/automotive-reliability-standards/.skill.yaml
+!.claude/skills-on-demand/.gitkeep
+!/.claude/skills-on-demand/excel-operations/
+!/.claude/skills-on-demand/word-operations/
+!/.claude/skills-on-demand/pptx-operations/
+!/.claude/skills-on-demand/sqlite-operations/
+!/.claude/skills-on-demand/marp-pptx/
+!/.claude/skills-on-demand/xlsx-authoring/
+!/.claude/skills-on-demand/docx-authoring/
+!/.claude/skills-on-demand/pdf/
+!/.claude/skills-on-demand/skill-creator/
+!/.claude/skills-on-demand/pptx-authoring/
+!/.claude/skills-on-demand/batch-refactor/
+!/.claude/skills-on-demand/_skill_template/
+
+# === Internal agents（公司內部流程/知識，不追蹤）===
+.claude/agents/questionnaire-response-drafter.md
+.claude/agents/report-builder.md
+.claude/agents/promoter.md
+.claude/agents/ingest-archiver.md
+.claude/agents/ingest-structure-detector.md
+.claude/agents/bom-ingest-exclusion-applier.md
+.claude/agents/ingest-db-writer.md
+.claude/agents/ingest-validator.md
 
 # === Legacy（只留本機，不追蹤）===
 .claude/agents-legacy/

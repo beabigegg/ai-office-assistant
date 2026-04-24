@@ -1,5 +1,7 @@
 ---
 name: pptx-authoring
+scope: generic
+tracking: tracked
 description: |
   WHAT：用 pptxgenjs（Node.js）從零建立原生可編輯 .pptx（自由設計，非公司模板）。
   WHEN：全新簡報設計、需在 PowerPoint 內直接編輯、不受公司模板限制、程式化生成。

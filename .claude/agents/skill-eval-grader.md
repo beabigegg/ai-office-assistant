@@ -1,5 +1,7 @@
 ---
 name: skill-eval-grader
+scope: generic
+tracking: tracked
 description: >
   Evaluates skill execution quality by grading transcript outputs against an
   expectation list. Use when the skill-creator workflow needs to assess whether

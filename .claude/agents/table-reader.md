@@ -1,5 +1,7 @@
 ---
 name: table-reader
+scope: generic
+tracking: tracked
 description: >
   PDF table extraction specialist using vision capability.
   Use proactively when the task involves:
