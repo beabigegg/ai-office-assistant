@@ -71,6 +71,8 @@ def main():
         "[SESSION] 尚未啟動 session_start workflow。\n"
         f"建議執行：bash shared/tools/conda-python.sh shared/workflows/coordinator.py start session_start "
         f'--context \'{{"project":"{project_hint}"}}\'\n'
+        f"PowerShell 可改用：powershell -ExecutionPolicy Bypass -File shared/tools/conda-python.ps1 "
+        f"shared/workflows/coordinator.py start session_start --context '{{\"project\":\"{project_hint}\"}}'\n"
         "注意：`project` 必須是 canonical project id，例如 `ecr-ecn`，不可寫 `projects/ecr-ecn`。\n"
         "（若已在另一個 workflow 中，忽略此提示）"
     )
