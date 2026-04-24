@@ -57,6 +57,28 @@ def _normalize_kb_project(project: str | None) -> str:
         value = value[len("projects/") :]
     return value.strip("/")
 
+
+def _normalize_learning_confidence(raw_confidence: str) -> str:
+    """Accept canonical labels and legacy numeric confidence scores."""
+    value = str(raw_confidence or "").strip().lower()
+    if value in {"high", "medium", "low"}:
+        return value
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError):
+        raise argparse.ArgumentTypeError(
+            "invalid confidence; use high|medium|low or a numeric score like 0.90"
+        )
+    if not 0.0 <= numeric <= 1.0:
+        raise argparse.ArgumentTypeError(
+            "numeric confidence must be between 0.0 and 1.0"
+        )
+    if numeric >= 0.8:
+        return "high"
+    if numeric >= 0.5:
+        return "medium"
+    return "low"
+
 def _get_embedding_utils():
     global _embedding_utils
     if _embedding_utils is None:
@@ -2041,7 +2063,12 @@ def main():
     p_learn.add_argument('--title', required=True)
     p_learn.add_argument('--date', required=True)
     p_learn.add_argument('--content', required=True)
-    p_learn.add_argument('--confidence', required=True, choices=['high', 'medium', 'low'])
+    p_learn.add_argument(
+        '--confidence',
+        required=True,
+        type=_normalize_learning_confidence,
+        help='Learning confidence: high|medium|low, or legacy numeric 0.0-1.0',
+    )
     p_learn.add_argument(
         '--status',
         default='active',

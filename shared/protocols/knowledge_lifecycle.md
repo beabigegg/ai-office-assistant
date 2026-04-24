@@ -133,6 +133,9 @@ automotive-reliability-standards
 
 **升級門檻**：加權總分 >= 2.50
 
+注意：上表是 Promoter 的內部評分尺度，不是 `kb.py add-learning --confidence` 的 CLI 輸入格式。
+Runtime 寫入 learning 時，`--confidence` 應使用 `high|medium|low`；舊的 `0.0-1.0` 分數若出現，僅視為相容輸入並映射到這三個枚舉值。
+
 ### 知識健康度儀表板
 
 Promoter 在 `/promote` 時輸出：

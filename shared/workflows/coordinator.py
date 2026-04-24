@@ -155,6 +155,12 @@ def _scan_and_queue_candidates(pm, min_usage: int = 3) -> list:
 
 
 def _format_sample_outputs(node: dict, project: str = "...") -> dict:
+    if node.get("id") == "check_memory_trigger":
+        return {
+            "memory_conditions_met": True,
+            "snapshot_path": "shared/kb/memory/YYYY-MM-DD.md",
+            "snapshot_id": "YYYY-MM-DD",
+        }
     sample = {}
     required_outputs = node.get("required_outputs", [])
     for req in required_outputs:

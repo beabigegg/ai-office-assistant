@@ -30,7 +30,7 @@
     {
       "id": "record_knowledge",
       "description": "Record new rules/findings. Read checklist, report what was learned or explicitly state no new findings.",
-      "instruction": "Read `shared/workflows/checklists/post_task__record_knowledge.yaml`. If there are reusable learnings, write them with `bash shared/tools/conda-python.sh shared/tools/kb.py add-learning --project <PROJECT_ID|system|ai-office|shared> ...` and complete with `{\"learning_ids\":[\"STD-L041\"]}`. If there are no new findings, explicitly say so and complete with `{\"skipped\":true,\"summary\":\"No new reusable learning beyond this task.\"}`. `checklist_responses` is still allowed, but for this single-item checklist `summary` is the compact fast path.",
+      "instruction": "Read `shared/workflows/checklists/post_task__record_knowledge.yaml`. If there are reusable learnings, write them with `bash shared/tools/conda-python.sh shared/tools/kb.py add-learning --project <PROJECT_ID|system|ai-office|shared> ...` and complete with `{\"learning_ids\":[\"STD-L041\"]}`. Before writing, check `bash shared/tools/conda-python.sh shared/tools/kb.py add-learning -h` if unsure about CLI flags. `--confidence` must be `high|medium|low`; do NOT pass internal scoring values like `0.90` here. If there are no new findings, explicitly say so and complete with `{\"skipped\":true,\"summary\":\"No new reusable learning beyond this task.\"}`. `checklist_responses` is still allowed, but for this single-item checklist `summary` is the compact fast path.",
       "depends_on": ["update_project_state"],
       "required": true,
       "required_outputs": [
@@ -43,7 +43,7 @@
     {
       "id": "check_memory_trigger",
       "description": "Evaluate memory snapshot conditions. Create snapshot if conditions met.",
-      "instruction": "Snapshot only if any condition is true: ≥3 files written, DB schema changed, report produced, ≥10 conversation rounds, or ≥2 new decisions. If triggered, write `shared/kb/memory/YYYY-MM-DD.md`, run `bash shared/tools/conda-python.sh shared/tools/kb.py import-snapshot shared/kb/memory/YYYY-MM-DD.md`, then complete with `{\"memory_conditions_met\":true,\"snapshot_path\":\"shared/kb/memory/YYYY-MM-DD.md\",\"snapshot_id\":\"YYYY-MM-DD\"}`. Otherwise complete with `{\"memory_conditions_met\":false}`.",
+      "instruction": "Snapshot only if any condition is true: ≥3 files written, DB schema changed, report produced, ≥10 conversation rounds, or ≥2 new decisions. If triggered, write `shared/kb/memory/YYYY-MM-DD.md`, run `bash shared/tools/conda-python.sh shared/tools/kb.py import-snapshot shared/kb/memory/YYYY-MM-DD.md`, then complete with `{\"memory_conditions_met\":true,\"snapshot_path\":\"shared/kb/memory/YYYY-MM-DD.md\",\"snapshot_id\":\"YYYY-MM-DD\"}`. Do not complete this node with placeholder artifact outputs like `{\"file\":\"memory/\"}`; the required proof is the actual `snapshot_path` (and preferably `snapshot_id`). Otherwise complete with `{\"memory_conditions_met\":false}`.",
       "depends_on": ["record_decisions", "record_knowledge"],
       "required": true,
       "required_outputs": [
