@@ -30,7 +30,7 @@
     {
       "id": "record_knowledge",
       "description": "Record new rules/findings. Read checklist, report what was learned or explicitly state no new findings.",
-      "instruction": "Read `shared/workflows/checklists/post_task__record_knowledge.yaml`. If there are reusable learnings, write them with `bash shared/tools/conda-python.sh shared/tools/kb.py add-learning ...` and complete with `{\"learning_ids\":[\"STD-L041\"]}`. If there are no new findings, explicitly say so and complete with `{\"skipped\":true,\"summary\":\"No new reusable learning beyond this task.\"}`. `checklist_responses` is still allowed, but for this single-item checklist `summary` is the compact fast path.",
+      "instruction": "Read `shared/workflows/checklists/post_task__record_knowledge.yaml`. If there are reusable learnings, write them with `bash shared/tools/conda-python.sh shared/tools/kb.py add-learning --project <PROJECT_ID|system|ai-office|shared> ...` and complete with `{\"learning_ids\":[\"STD-L041\"]}`. If there are no new findings, explicitly say so and complete with `{\"skipped\":true,\"summary\":\"No new reusable learning beyond this task.\"}`. `checklist_responses` is still allowed, but for this single-item checklist `summary` is the compact fast path.",
       "depends_on": ["update_project_state"],
       "required": true,
       "required_outputs": [

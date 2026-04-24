@@ -15,7 +15,7 @@
     {
       "id": "write_to_dynamic",
       "description": "Write knowledge to kb_index.db via kb.py (source of truth). M2 validator checks status field in DB, not .md marker.",
-      "instruction": "For decisions: bash shared/tools/conda-python.sh shared/tools/kb.py add-decision --id D-NNN ... For learnings: bash shared/tools/conda-python.sh shared/tools/kb.py add-learning --id <prefix>-LNN --title '...' --date YYYY-MM-DD --content '...' --confidence high|medium|low [--status draft|active|mature|promoted|stale|archived]. EVO-016: kb.py writes DB only; .md export refreshed by post_task refresh_kb_exports node or `kb.py export all`. When completing this node, pass `kb_entry_ids` in outputs so M2 validator checks the exact DB rows written this round.",
+      "instruction": "For decisions: bash shared/tools/conda-python.sh shared/tools/kb.py add-decision --id D-NNN --project <PROJECT_ID|system|ai-office|shared> ... For learnings: bash shared/tools/conda-python.sh shared/tools/kb.py add-learning --id <prefix>-LNN --project <PROJECT_ID|system|ai-office|shared> --title '...' --date YYYY-MM-DD --content '...' --confidence high|medium|low [--status draft|active|mature|promoted|stale|archived]. EVO-016: kb.py writes DB only; .md export refreshed by post_task refresh_kb_exports node or `kb.py export all`. When completing this node, pass `kb_entry_ids` in outputs so M2 validator checks the exact DB rows written this round.",
       "depends_on": ["classify_knowledge"],
       "required": true,
       "required_outputs": [

@@ -45,6 +45,18 @@ _embedding_utils = None
 # sqlite-vec availability (set at connection time)
 _VEC_AVAILABLE = False
 
+
+def _normalize_kb_project(project: str | None) -> str:
+    """Normalize KB project labels to canonical ids/tags."""
+    value = (project or "").strip().replace("\\", "/")
+    while value.startswith("./"):
+        value = value[2:]
+    if value.startswith("/"):
+        value = value[1:]
+    if value.startswith("projects/"):
+        value = value[len("projects/") :]
+    return value.strip("/")
+
 def _get_embedding_utils():
     global _embedding_utils
     if _embedding_utils is None:
@@ -439,19 +451,26 @@ def cmd_search(args):
     top = args.top or 10
     query = args.query
     budget = getattr(args, 'budget', 0) or 0
+    project = _normalize_kb_project(getattr(args, 'project', None))
 
     # Collect output lines, then apply budget truncation
     lines = []
 
     if args.keyword:
         pattern = f"%{query}%"
-        rows = conn.execute("""
+        sql = """
             SELECT id, node_type, status, target, summary, created_date
             FROM nodes
             WHERE (target LIKE ? OR summary LIKE ? OR content LIKE ?)
               AND status = 'active'
-            ORDER BY created_date DESC LIMIT ?
-        """, (pattern, pattern, pattern, top)).fetchall()
+        """
+        params = [pattern, pattern, pattern]
+        if project:
+            sql += " AND project = ?"
+            params.append(project)
+        sql += " ORDER BY created_date DESC LIMIT ?"
+        params.append(top)
+        rows = conn.execute(sql, params).fetchall()
         for r in rows:
             skills = _get_related_skills(conn, r['id'])
             skill_tag = f"  [→ {', '.join(skills)}]" if skills else ""
@@ -483,10 +502,11 @@ def cmd_search(args):
                     FROM node_vec v
                     JOIN nodes n ON v.node_id = n.id
                     WHERE n.status = 'active'
+                      AND (? = '' OR n.project = ?)
                       AND v.embedding MATCH ?
                       AND k = ?
                     ORDER BY v.distance
-                """, (query_blob, top)).fetchall()
+                """, (project, project, query_blob, top)).fetchall()
                 for row in vec_rows:
                     # sqlite-vec returns L2 distance; convert to approx similarity for display
                     sim = max(0.0, 1.0 - row['distance'])
@@ -627,6 +647,10 @@ def cmd_add_decision(args):
     """Write decision to DB (source of truth)."""
     conn = _get_conn()
     _ensure_schema(conn)
+    project = _normalize_kb_project(args.project)
+    if not project:
+        print(json.dumps({"ok": False, "error": "Project is required"}))
+        sys.exit(1)
 
     node_id = args.id
     m = re.match(r'^D-(\d+)$', node_id)
@@ -690,7 +714,7 @@ def cmd_add_decision(args):
          refs_skill, refs_db, affects_project, created_date, last_synced)
         VALUES (?, 'decision', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
-        node_id, args.project, args.status or 'active', args.target, summary,
+        node_id, project, args.status or 'active', args.target, summary,
         content_body, json.dumps(meta, ensure_ascii=False),
         refs_skill_json, refs_db_json, affects_json,
         args.date, datetime.now().isoformat()
@@ -732,6 +756,10 @@ def cmd_add_learning(args):
     """Write learning note to DB (source of truth)."""
     conn = _get_conn()
     _ensure_schema(conn)
+    project = _normalize_kb_project(args.project)
+    if not project:
+        print(json.dumps({"ok": False, "error": "Project is required"}))
+        sys.exit(1)
 
     node_id = args.id
 
@@ -739,8 +767,7 @@ def cmd_add_learning(args):
         f"- 觀察：{args.content}",
         f"- 信心度：{args.confidence}",
     ]
-    if args.project:
-        content_lines.append(f"- 相關專案：{args.project}")
+    content_lines.append(f"- 相關專案：{project}")
     if args.related_decision:
         content_lines.append(f"- 相關決策：{args.related_decision}")
     content_body = '\n'.join(content_lines)
@@ -751,7 +778,7 @@ def cmd_add_learning(args):
         (id, node_type, project, status, target, summary, content, meta_json, created_date, last_synced)
         VALUES (?, 'learning', ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
-        node_id, args.project or 'ecr-ecn', args.status or 'active',
+        node_id, project, args.status or 'active',
         args.title[:80], args.title[:120], content_body,
         json.dumps({"confidence": args.confidence}, ensure_ascii=False),
         args.date, datetime.now().isoformat()
@@ -1979,6 +2006,8 @@ def main():
     p_search.add_argument('--include-snapshots', dest='include_snapshots',
                           action='store_true',
                           help='Also search shared/kb/memory snapshots via FTS5 (use kb.py read SNAP:<id>).')
+    p_search.add_argument('--project', type=str, default=None,
+                          help='Limit results to a KB project/system scope (e.g. ecr-ecn, system, ai-office, shared).')
 
     # import-snapshot
     p_imp_snap = sub.add_parser('import-snapshot',
@@ -2018,7 +2047,7 @@ def main():
         default='active',
         choices=['draft', 'active', 'mature', 'promoted', 'stale', 'archived'],
     )
-    p_learn.add_argument('--project')
+    p_learn.add_argument('--project', required=True)
     p_learn.add_argument('--related_decision')
 
     # update

@@ -57,6 +57,29 @@ RULES_PATH = KB_ROOT / 'dynamic' / 'ecr_ecn_rules.md'
 COLUMN_SEM_PATH = KB_ROOT / 'dynamic' / 'column_semantics.md'
 LEARNING_PATH = KB_ROOT / 'dynamic' / 'learning_notes.md'
 
+SEMANTIC_OVERLAP_SUPPRESS_RELATIONS = {
+    'references',
+    'related_to',
+    'duplicate_of',
+    'same_topic',
+    'supersedes',
+    'superseded_by',
+}
+SEMANTIC_TOKEN_STOPWORDS = {
+    'shared',
+    'tools',
+    'tool',
+    'workspace',
+    'projects',
+    'project',
+    'scripts',
+    'python',
+    'py',
+    'md',
+    'json',
+    'db',
+}
+
 
 # ── Static templates for generate-index (stable content, rarely changes) ──
 
@@ -190,6 +213,22 @@ class KBIndex:
 
     def close(self):
         self.conn.close()
+
+    def _has_semantic_overlap_suppress_edge(self, left_id: str, right_id: str) -> bool:
+        row = self.conn.execute(
+            """
+            SELECT 1
+            FROM edges
+            WHERE relation IN ({})
+              AND (
+                    (source_id=? AND target_id=?)
+                 OR (source_id=? AND target_id=?)
+              )
+            LIMIT 1
+            """.format(",".join("?" for _ in SEMANTIC_OVERLAP_SUPPRESS_RELATIONS)),
+            [*SEMANTIC_OVERLAP_SUPPRESS_RELATIONS, left_id, right_id, right_id, left_id],
+        ).fetchone()
+        return row is not None
 
     # ── Sync ──────────────────────────────────────────────────────────
 
@@ -913,6 +952,8 @@ class KBIndex:
                     if pair not in reported_pairs:
                         # Skip exact target matches (already reported above)
                         if a['target'] != target:
+                            if self._has_semantic_overlap_suppress_edge(a['id'], did):
+                                continue
                             reported_pairs.add(pair)
                             issues.append(f"WARN: Possible semantic overlap ({score}): {a['id']}({a['target'][:30]}) <-> {did}({target[:30]})")
 
@@ -1062,7 +1103,10 @@ class KBIndex:
             if not text:
                 return set()
             # Extract alphanumeric words
-            alpha_tokens = set(re.findall(r'[a-zA-Z0-9_]+', text.lower()))
+            alpha_tokens = {
+                tok for tok in re.findall(r'[a-zA-Z0-9_]+', text.lower())
+                if tok not in SEMANTIC_TOKEN_STOPWORDS
+            }
             # Extract CJK characters individually (each is a "word")
             cjk_tokens = set(re.findall(r'[\u4e00-\u9fff]', text))
             return alpha_tokens | cjk_tokens
