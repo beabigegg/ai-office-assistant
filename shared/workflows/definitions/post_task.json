@@ -17,7 +17,7 @@
     {
       "id": "record_decisions",
       "description": "Check decisions.md for new entries with D-NNN format, ensure sequential numbering",
-      "instruction": "1. Run: bash shared/tools/conda-python.sh shared/tools/kb.py next-id (get next D-NNN from DB). 2. For each new decision: bash shared/tools/conda-python.sh shared/tools/kb.py add-decision --id D-NNN --date YYYY-MM-DD --project {PROJECT_ID} --target '...' --question '...' --decision '...' --impact '...' [--supersedes D-XXX] [--refs_skill X] [--review_by YYYY-MM-DD]. 3. Complete with outputs containing decision_ids, for example {\"decision_ids\":[\"D-201\",\"D-202\"]}. 4. If no new decisions: complete with outputs {\"skipped\":true}. Validator checks sequential numbering + conflict detection; ERROR level blocks flow.",
+      "instruction": "If this task created new durable decisions, get the next DB id via `bash shared/tools/conda-python.sh shared/tools/kb.py next-id`, write each one with `kb.py add-decision`, then complete with `{\"decision_ids\":[\"D-201\",\"D-202\"]}`. If no new decisions were made, complete with `{\"skipped\":true}`.",
       "depends_on": ["update_project_state"],
       "required": true,
       "required_outputs": [
@@ -30,7 +30,7 @@
     {
       "id": "record_knowledge",
       "description": "Record new rules/findings. Read checklist, report what was learned or explicitly state no new findings.",
-      "instruction": "Read checklist: shared/workflows/checklists/post_task__record_knowledge.yaml. For each new learning: bash shared/tools/conda-python.sh shared/tools/kb.py add-learning --id <prefix>-LNN --title '...' --date YYYY-MM-DD --content '...' --confidence high|medium|low [--project {PROJECT_ID}] [--related_decision D-NNN]. When new learnings were added, complete with outputs containing learning_ids, for example {\"learning_ids\":[\"STD-L041\"]}. If no new findings, state explicitly in checklist_responses and complete with {\"skipped\":true, \"checklist_responses\": {...}}. Submit responses for ALL checklist items.",
+      "instruction": "Read `shared/workflows/checklists/post_task__record_knowledge.yaml`. If there are reusable learnings, write them with `bash shared/tools/conda-python.sh shared/tools/kb.py add-learning ...` and complete with `{\"learning_ids\":[\"STD-L041\"]}`. If there are no new findings, explicitly say so and complete with `{\"skipped\":true,\"summary\":\"No new reusable learning beyond this task.\"}`. `checklist_responses` is still allowed, but for this single-item checklist `summary` is the compact fast path.",
       "depends_on": ["update_project_state"],
       "required": true,
       "required_outputs": [
@@ -43,7 +43,7 @@
     {
       "id": "check_memory_trigger",
       "description": "Evaluate memory snapshot conditions. Create snapshot if conditions met.",
-      "instruction": "Conditions — ANY triggers snapshot: ≥3 files written | DB schema changed | report produced | ≥10 conversation rounds | ≥2 new decisions. If triggered: (1) write shared/kb/memory/YYYY-MM-DD.md with session summary (context, decisions, learnings, next steps), then (2) run `bash shared/tools/conda-python.sh shared/tools/kb.py import-snapshot shared/kb/memory/YYYY-MM-DD.md` so the snapshot is searchable via `kb.py search --include-snapshots`. Complete with: --outputs '{\"memory_conditions_met\":true|false}'.",
+      "instruction": "Snapshot only if any condition is true: ≥3 files written, DB schema changed, report produced, ≥10 conversation rounds, or ≥2 new decisions. If triggered, write `shared/kb/memory/YYYY-MM-DD.md`, run `bash shared/tools/conda-python.sh shared/tools/kb.py import-snapshot shared/kb/memory/YYYY-MM-DD.md`, then complete with `{\"memory_conditions_met\":true,\"snapshot_path\":\"shared/kb/memory/YYYY-MM-DD.md\",\"snapshot_id\":\"YYYY-MM-DD\"}`. Otherwise complete with `{\"memory_conditions_met\":false}`.",
       "depends_on": ["record_decisions", "record_knowledge"],
       "required": true,
       "required_outputs": [
@@ -86,7 +86,7 @@
     {
       "id": "refresh_kb_exports",
       "description": "EVO-016: Regenerate .md exports from DB (DB is source of truth)",
-      "instruction": "If record_decisions or record_knowledge added new ids this round, run: bash shared/tools/conda-python.sh shared/tools/kb.py export all. Complete with outputs such as {\"exported\":true,\"export_targets\":[\"shared/kb/decisions.md\",\"shared/kb/dynamic/learning_notes.md\"]}. If no new decisions/learnings were added in this task, complete with {\"skipped\":true}.",
+      "instruction": "If this round added `decision_ids` or `learning_ids`, run `bash shared/tools/conda-python.sh shared/tools/kb.py export all` and complete with `{\"exported\":true,\"export_targets\":[\"shared/kb/decisions.md\",\"shared/kb/dynamic/learning_notes.md\",\"shared/kb/active_rules_summary.md\",\"shared/kb/_index.md\"]}`. If no new KB entries were added, complete with `{\"skipped\":true}`.",
       "depends_on": ["record_decisions", "record_knowledge"],
       "required": true,
       "required_outputs": [],

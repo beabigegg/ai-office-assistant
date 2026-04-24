@@ -5,7 +5,7 @@
     {
       "id": "classify_knowledge",
       "description": "Classify incoming knowledge: official doc → skills/external, inference → dynamic. Read checklist and report classification basis.",
-      "instruction": "Read checklist: shared/workflows/checklists/knowledge_lifecycle__classify_knowledge.yaml. Classification rules: (1) Official doc / user-confirmed fact → .claude/skills-on-demand/ (走 /promote 升級路徑); (2) Inference / single case / observed pattern → kb.py add-learning (DB is source of truth; dynamic/*.md are auto-generated exports). Submit checklist_responses with classification basis for each item.",
+      "instruction": "Read checklist: shared/workflows/checklists/knowledge_lifecycle__classify_knowledge.yaml. Classification rules: (1) Official doc / user-confirmed fact → .claude/skills-on-demand/ (走 /promote 升級路徑); (2) Inference / single case / observed pattern → kb.py add-learning (DB is source of truth; dynamic/*.md are auto-generated exports). Complete with either `checklist_responses` or compact `{\"summary\":\"<classification basis>\"}` for this single-item checklist.",
       "depends_on": [],
       "required": true,
       "required_outputs": [],

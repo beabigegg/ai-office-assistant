@@ -801,7 +801,6 @@ def cmd_export(args):
     conn = _get_conn()
     _ensure_schema(conn)
     target = args.target
-
     if target in ('decisions', 'all'):
         rows = conn.execute("""
             SELECT id, node_type, project, status, target, summary, content, meta_json, created_date
@@ -863,6 +862,17 @@ def cmd_export(args):
         print(f"Exported {len(rows)} learning notes -> {out_path.relative_to(ROOT)}")
 
     conn.close()
+
+    if target == 'all':
+        KBIndex = _get_kb_index()
+        kb = KBIndex()
+        try:
+            summary_path, _ = kb.generate_active_summary()
+            index_path, _ = kb.generate_index()
+        finally:
+            kb.close()
+        print(f"Generated active summary -> {summary_path.relative_to(ROOT)}")
+        print(f"Generated KB index -> {index_path.relative_to(ROOT)}")
 
 
 # ═══════════════════════════════════════════════════════════

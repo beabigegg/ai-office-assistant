@@ -5,13 +5,13 @@
     {
       "id": "read_project_state",
       "description": "Read {PROJECT_ROOT}/workspace/project_state.md to restore session context",
-      "instruction": "Read {PROJECT_ROOT}/workspace/project_state.md. Confirm project type from first line (<!-- type: knowledge|project_management -->). Set {PROJECT_ID} for this session. Summarize to user: 當前階段, 活躍任務 count, 未解問題 count, 資料庫現況.",
+      "instruction": "Read `{PROJECT_ROOT}/workspace/project_state.md`. Confirm project type from first line (`<!-- type: knowledge|project_management -->`). Set `{PROJECT_ID}` for this session. Complete with `{\"state_path\":\"projects/{PROJECT_ID}/workspace/project_state.md\"}` and summarize to user: 當前階段, 活躍任務 count, 未解問題 count, 資料庫現況.",
       "depends_on": [],
       "required": true,
       "required_outputs": [
-        {"path_contains": "project_state.md", "description": "project_state.md read"}
+        {"output_key": "state_path", "description": "project_state.md read"}
       ],
-      "validator": null,
+      "validator": "check_project_state_read",
       "validator_params": {}
     },
     {

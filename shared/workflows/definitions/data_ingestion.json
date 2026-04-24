@@ -27,7 +27,7 @@
     {
       "id": "confirm_with_user",
       "description": "Present structure findings and column mappings to user for confirmation. Read checklist and report responses.",
-      "instruction": "Read checklist: shared/workflows/checklists/data_ingestion__confirm_with_user.yaml. Present findings: sheet mapping, structural anomalies, heuristic table-name candidates, and proposed column mappings. Key confirmations needed: (1) correct DB table target? (2) column mappings correct? (3) -AU suffix / PANJIT digit2 handling confirmed? (4) exclusion rules scope confirmed? Wait for user confirmation before proceeding. Submit checklist_responses.",
+      "instruction": "Read checklist: shared/workflows/checklists/data_ingestion__confirm_with_user.yaml. Present findings: sheet mapping, structural anomalies, heuristic table-name candidates, and proposed column mappings. Key confirmations needed: (1) correct DB table target? (2) column mappings correct? (3) -AU suffix / PANJIT digit2 handling confirmed? (4) exclusion rules scope confirmed? Wait for user confirmation before proceeding. Complete with either `checklist_responses` or compact `{\"summary\":\"<confirmed mappings and unresolved items>\"}` for this single-item checklist.",
       "depends_on": ["detect_structure"],
       "required": true,
       "required_outputs": [],

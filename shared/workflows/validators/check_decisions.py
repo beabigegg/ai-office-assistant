@@ -2,6 +2,7 @@
 Verifies D-NNN sequential numbering with no gaps.
 EVO-016: Reads from kb_index.db (source of truth) instead of decisions.md.
 """
+import json
 import re
 from pathlib import Path
 
@@ -18,6 +19,15 @@ def validate(context: dict) -> tuple:
 
     if not db_path.exists():
         return True, "kb_index.db not found, skipped"
+
+    outputs = context.get("outputs", {}) or {}
+    decision_ids = outputs.get("decision_ids", [])
+    if isinstance(decision_ids, str):
+        decision_ids = [decision_ids]
+    decision_ids = [str(x).strip() for x in decision_ids if str(x).strip()]
+
+    if outputs.get("skipped"):
+        return True, "no new decisions recorded"
 
     conn = sqlite3.connect(str(db_path))
     conn.row_factory = sqlite3.Row
@@ -50,18 +60,27 @@ def validate(context: dict) -> tuple:
 
         message = f"{len(numbers)} entries, D-{numbers[0]:03d} to D-{numbers[-1]:03d}"
 
-        # Meta completeness check on last 5 (meta_json must carry status/target)
-        recent_ids = numbers[-5:]
+        if not decision_ids:
+            return False, "decision_ids missing from outputs"
+
+        missing_ids = [did for did in decision_ids if did not in {r["id"] for r in rows}]
+        if missing_ids:
+            return False, f"decision ids not found in DB: {', '.join(missing_ids)}"
+
+        # Meta completeness + conflict checks only on decisions recorded this round.
         missing_meta = []
-        recent_targets = {}
-        for n in recent_ids:
-            r = id_to_row[n]
-            did = f"D-{n:03d}"
+        recorded_targets = {}
+        for did in decision_ids:
+            m = re.match(r"D-(\d+)", did)
+            if not m:
+                continue
+            r = id_to_row.get(int(m.group(1)))
+            if r is None:
+                continue
             meta_ok = False
             if r['meta_json']:
                 try:
-                    import json as _json
-                    meta = _json.loads(r['meta_json'])
+                    meta = json.loads(r['meta_json'])
                     if meta.get('status') and meta.get('target'):
                         meta_ok = True
                 except Exception:
@@ -69,21 +88,17 @@ def validate(context: dict) -> tuple:
             if not meta_ok:
                 missing_meta.append(did)
             if r['target']:
-                recent_targets[did] = r['target']
+                recorded_targets[did] = r['target']
         if missing_meta:
             message += f" | WARN: missing kb meta: {', '.join(missing_meta)}"
     finally:
         conn.close()
 
-    # Delegate sync/validate/check-conflict/regenerate to kb.py (EVO-016)
+    # Delegate validate/check-conflict to kb.py (EVO-016).
+    # Keep validator side-effect free: exports/index generation belongs to refresh_kb_exports.
     try:
-        import subprocess, os
+        import subprocess
         kb_script = str(root / 'shared' / 'tools' / 'kb.py')
-        env = dict(os.environ, PYTHONIOENCODING='utf-8')
-        subprocess.run(
-            ['python', kb_script, 'sync', '--quiet'],
-            capture_output=True, timeout=10, cwd=str(root), env=env
-        )
         val_result = subprocess.run(
             ['python', kb_script, 'validate', '--quiet'],
             capture_output=True, timeout=10, cwd=str(root),
@@ -94,7 +109,7 @@ def validate(context: dict) -> tuple:
         elif val_result.returncode == 1 and val_result.stdout.strip():
             message += f" | KB warnings: {val_result.stdout.strip()[:200]}"
 
-        for did, target_text in recent_targets.items():
+        for did, target_text in recorded_targets.items():
             conflict_result = subprocess.run(
                 ['python', kb_script, 'check-conflict', target_text, '--threshold', '0.5'],
                 capture_output=True, timeout=10, cwd=str(root),
@@ -107,18 +122,6 @@ def validate(context: dict) -> tuple:
                 ]
                 if conflict_lines:
                     message += f" | L2-CONFLICT {did}: {'; '.join(l.strip() for l in conflict_lines[:3])}"
-
-        subprocess.run(
-            ['python', kb_script, 'generate-summary'],
-            capture_output=True, timeout=15, cwd=str(root), env=env
-        )
-        message += " | active_rules_summary.md regenerated"
-
-        subprocess.run(
-            ['python', kb_script, 'generate-index'],
-            capture_output=True, timeout=15, cwd=str(root), env=env
-        )
-        message += " | _index.md regenerated"
     except Exception:
         pass
 

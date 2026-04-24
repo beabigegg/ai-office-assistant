@@ -53,6 +53,45 @@ def _normalize_responses(responses):
     return {}
 
 
+def _fallback_single_item_response(workflow_name, node_id, outputs, active_items):
+    """Allow compact single-item outputs on high-frequency hotspots.
+
+    This keeps explicit acknowledgement, but avoids forcing a bulky
+    checklist_responses wrapper for trivial one-item checklists.
+    """
+    if len(active_items) != 1:
+        return {}
+
+    item_id = active_items[0]["id"]
+    if workflow_name == "post_task" and node_id == "record_knowledge":
+        learning_ids = outputs.get("learning_ids", [])
+        if isinstance(learning_ids, str):
+            learning_ids = [learning_ids]
+        learning_ids = [str(x).strip() for x in learning_ids if str(x).strip()]
+        if learning_ids:
+            return {item_id: f"recorded learnings: {', '.join(learning_ids)}"}
+
+        summary = str(outputs.get("summary", "") or outputs.get("skipped_reason", "")).strip()
+        if outputs.get("skipped") and summary:
+            return {item_id: summary}
+
+    if workflow_name == "knowledge_lifecycle" and node_id == "classify_knowledge":
+        summary = str(outputs.get("summary", "") or outputs.get("classification_basis", "")).strip()
+        if summary:
+            return {item_id: summary}
+
+    if workflow_name == "data_ingestion" and node_id == "confirm_with_user":
+        summary = str(
+            outputs.get("summary", "")
+            or outputs.get("mapping_summary", "")
+            or outputs.get("confirmation_notes", "")
+        ).strip()
+        if summary:
+            return {item_id: summary}
+
+    return {}
+
+
 def _load_yaml(path):
     """Load YAML file, fallback to basic parsing if PyYAML unavailable."""
     if yaml:
@@ -114,6 +153,8 @@ def validate(context: dict) -> tuple:
 
     # Check responses
     responses = _normalize_responses(outputs.get("checklist_responses", {}))
+    if not responses:
+        responses = _fallback_single_item_response(workflow_name, node_id, outputs, active_items)
     if not responses:
         item_list = ', '.join(c['id'] for c in active_items)
         return False, f"Missing checklist_responses in outputs. Required: {item_list}"
