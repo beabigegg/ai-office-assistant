@@ -40,6 +40,120 @@ def _launcher_prefix() -> str:
     return "bash shared/tools/conda-python.sh shared/workflows/coordinator.py"
 
 
+def _load_promo_module():
+    """Load promotion_state module. Returns module or None on any error."""
+    try:
+        import importlib.util as _ilu
+        _path = ROOT / 'shared' / 'tools' / 'promotion_state.py'
+        if not _path.exists():
+            return None
+        _spec = _ilu.spec_from_file_location('promotion_state', str(_path))
+        _mod = _ilu.module_from_spec(_spec)
+        _spec.loader.exec_module(_mod)
+        return _mod
+    except Exception:
+        return None
+
+
+def _scan_and_queue_candidates(pm, min_usage: int = 3) -> list:
+    """Query kb_index.db for mature learning nodes and enqueue new candidates.
+
+    Returns list of newly-added learning IDs.
+    """
+    db_path = ROOT / 'shared' / 'kb' / 'knowledge_graph' / 'kb_index.db'
+    if not db_path.exists():
+        return []
+    import sqlite3
+    from datetime import timedelta
+    try:
+        existing = {e.get('learning_id') for e in pm.load_queue(ROOT)}
+        # Eval-history: block re-enqueueing of recently evaluated candidates
+        eval_history: dict = {}
+        if hasattr(pm, 'load_eval_history'):
+            try:
+                eval_history = pm.load_eval_history(ROOT)
+            except Exception:
+                pass
+        # Build overlap guard: existing skill directory names
+        skills_dir = ROOT / '.claude' / 'skills-on-demand'
+        existing_skills: set = set()
+        if skills_dir.exists():
+            existing_skills = {
+                d.name for d in skills_dir.iterdir()
+                if d.is_dir() and (d / 'SKILL.md').exists()
+            }
+        with sqlite3.connect(str(db_path)) as _conn:
+            rows = _conn.execute(
+                "SELECT id, meta_json, refs_skill FROM nodes "
+                "WHERE node_type='learning' AND status='active'"
+            ).fetchall()
+        added = []
+        for (_id, _meta_raw, _refs_raw) in rows:
+            if _id in existing:
+                continue
+            try:
+                _meta = json.loads(_meta_raw) if _meta_raw else {}
+            except Exception:
+                _meta = {}
+            if int(_meta.get('usage_count', 0) or 0) < min_usage:
+                continue
+            if _meta.get('status') == 'promoted':
+                continue
+            # Eval-history exclusion
+            _eval = eval_history.get(_id)
+            if _eval:
+                _eval_result = _eval.get('result', '')
+                if _eval_result == 'proposed':
+                    # Awaiting /promote approval — never re-enqueue
+                    continue
+                if _eval_result in ('below_threshold', 'failed', 'unknown'):
+                    # 30-day cooldown after failed eval
+                    try:
+                        _dt = datetime.fromisoformat(_eval.get('evaluated_at', ''))
+                        if datetime.now(timezone.utc) - _dt < timedelta(days=30):
+                            continue
+                    except Exception:
+                        continue  # Unparseable timestamp → treat as still cooling down
+                if _eval_result == 'overlap':
+                    # 7-day cooldown; shorter because overlap may resolve if the blocking
+                    # skill is later removed — live overlap guard below is the final check
+                    try:
+                        _dt = datetime.fromisoformat(_eval.get('evaluated_at', ''))
+                        if datetime.now(timezone.utc) - _dt < timedelta(days=7):
+                            continue
+                    except Exception:
+                        continue
+                if _eval_result == 'in_progress':
+                    # Workflow picked this up but hasn't concluded yet (or crashed).
+                    # 24-hour suppression window — long enough to avoid duplicate queuing,
+                    # short enough to allow retry after a genuine crash.
+                    try:
+                        _dt = datetime.fromisoformat(_eval.get('evaluated_at', ''))
+                        if datetime.now(timezone.utc) - _dt < timedelta(hours=24):
+                            continue
+                    except Exception:
+                        continue
+            # Parse refs_skill: may be JSON array like '["bom-rules"]' or plain string
+            _suggested = None
+            if _refs_raw:
+                try:
+                    _parsed = json.loads(_refs_raw)
+                    if isinstance(_parsed, list) and _parsed:
+                        _suggested = str(_parsed[0])
+                    elif isinstance(_parsed, str):
+                        _suggested = _parsed
+                except Exception:
+                    _suggested = _refs_raw
+            # Overlap guard: skip if a skill with the same name already exists
+            if _suggested and _suggested in existing_skills:
+                continue
+            if pm.add_candidate(ROOT, _id, _meta, suggested_skill=_suggested):
+                added.append(_id)
+        return added
+    except Exception:
+        return []
+
+
 def _format_sample_outputs(node: dict, project: str = "...") -> dict:
     sample = {}
     required_outputs = node.get("required_outputs", [])
@@ -363,6 +477,34 @@ def complete(node_id: str, outputs: dict = None, instance_id: str = None, script
     ok, msg = engine.complete_node(node_id, outputs)
 
     if ok:
+        # Dequeue select_candidate as soon as it completes (not on workflow end),
+        # so the queue is unblocked even if later eval nodes fail or the workflow aborts.
+        if node_id == "select_candidate" and inst.get("workflow") == "skill_self_learning":
+            _pm = _load_promo_module()
+            if _pm is not None:
+                try:
+                    _sel_out = (outputs or {})
+                    _lid = _sel_out.get('learning_id')
+                    if not _lid:
+                        # Fallback: read from instance state (engine may have stored outputs already)
+                        _lid = (
+                            inst.get('nodes', {})
+                            .get('select_candidate', {})
+                            .get('outputs', {}) or {}
+                        ).get('learning_id')
+                    if _lid:
+                        _removed = _pm.remove_candidate(ROOT, _lid)
+                        msg += (
+                            f"\n[DEQUEUE] {'Removed' if _removed else 'Was not in queue'}: "
+                            f"{_lid}"
+                        )
+                        # Mark as in_progress immediately so the scan suppresses this
+                        # learning for 24 h even if the workflow later fails or is aborted.
+                        if hasattr(_pm, 'record_eval_result'):
+                            _pm.record_eval_result(ROOT, _lid, 'in_progress')
+                except Exception:
+                    pass
+
         # Check if all required nodes are now done
         all_required_done = engine.is_terminal_state()
 
@@ -399,11 +541,73 @@ def complete(node_id: str, outputs: dict = None, instance_id: str = None, script
 
             wf_name = inst["workflow"]
             count = state["counters"].get(wf_name, 0)
-            if wf_name == "post_task" and count % 3 == 0 and count > 0:
-                msg += (
-                    f"\n[PROMOTE] post_task completed {count} times. "
-                    "Consider running /promote for knowledge upgrade review."
-                )
+
+            if wf_name == "post_task":
+                # Run candidate scan on EVERY post_task completion (cheap SQLite read)
+                _pm = _load_promo_module()
+                if _pm is not None:
+                    try:
+                        _newly_added = _scan_and_queue_candidates(_pm)
+                        if _newly_added:
+                            msg += (
+                                f"\n[SCAN] Queued {len(_newly_added)} promotion candidate(s): "
+                                f"{', '.join(_newly_added[:3])}"
+                                + (f" (+{len(_newly_added)-3} more)" if len(_newly_added) > 3 else "")
+                            )
+                    except Exception:
+                        pass
+                if count % 3 == 0 and count > 0:
+                    msg += (
+                        f"\n[PROMOTE] post_task completed {count} times. "
+                        "Consider running /promote for knowledge upgrade review."
+                    )
+                    if _pm is not None:
+                        try:
+                            _queue = _pm.load_queue(ROOT)
+                            if _queue:
+                                _ids = [c.get('learning_id', '?') for c in _queue[:3]]
+                                _more = f" (+{len(_queue)-3} more)" if len(_queue) > 3 else ""
+                                msg += (
+                                    f"\n[AUTO-PROMOTE] {len(_queue)} candidate(s) in queue: "
+                                    f"{', '.join(_ids)}{_more}. "
+                                    "Run: bash shared/tools/conda-python.sh "
+                                    "shared/workflows/coordinator.py start skill_self_learning "
+                                    "--context '{\"project\":\"system\"}'"
+                                )
+                        except Exception:
+                            pass
+
+            elif wf_name == "skill_self_learning":
+                # Dequeue was already handled when select_candidate node completed.
+                # Write eval outcome to eval_history so the candidate is not
+                # indefinitely re-enqueued on future post_task scans.
+                _pm = _load_promo_module()
+                if _pm is not None and hasattr(_pm, 'record_eval_result'):
+                    try:
+                        _lid = (
+                            inst.get('nodes', {})
+                            .get('select_candidate', {})
+                            .get('outputs', {}) or {}
+                        ).get('learning_id')
+                        _prop_out = (
+                            inst.get('nodes', {})
+                            .get('propose_promotion', {})
+                            .get('outputs', {}) or {}
+                        )
+                        if _lid:
+                            if _prop_out.get('proposed') is True:
+                                _pm.record_eval_result(
+                                    ROOT, _lid, 'proposed',
+                                    proposal_path=_prop_out.get('proposal_path', ''),
+                                )
+                            elif _prop_out.get('proposed') is False:
+                                _reason = _prop_out.get('reason', 'unknown')
+                                _kwargs = {}
+                                if 'pass_rate' in _prop_out:
+                                    _kwargs['pass_rate'] = _prop_out['pass_rate']
+                                _pm.record_eval_result(ROOT, _lid, _reason, **_kwargs)
+                    except Exception:
+                        pass
 
     if injection is not None:
         tag = "OK" if injection["ok"] else "WARN"

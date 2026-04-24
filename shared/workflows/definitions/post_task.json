@@ -92,6 +92,16 @@
       "required_outputs": [],
       "validator": "check_kb_exports",
       "validator_params": {}
+    },
+    {
+      "id": "scan_promotion_candidates",
+      "description": "自動掃描成熟 learning 候選並寫入升級佇列",
+      "instruction": "Informational node only. The actual scan runs in coordinator's Python completion block (not here) and writes results to promotion_queue.json. This optional node is auto-skipped by the engine. The validator check_promotion_candidates runs as a secondary consistency check when explicitly invoked; it does NOT auto-complete this node.",
+      "depends_on": ["refresh_kb_exports"],
+      "required": false,
+      "required_outputs": [],
+      "validator": "check_promotion_candidates",
+      "validator_params": {"min_usage": 3}
     }
   ]
 }

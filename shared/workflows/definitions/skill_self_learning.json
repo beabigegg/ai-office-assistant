@@ -1,0 +1,53 @@
+{
+  "name": "skill_self_learning",
+  "description": "Skill promotion evaluation pipeline. Evaluates learning candidates via eval, produces a human-approved promotion proposal. Does NOT create SKILL.md autonomously — that step requires /promote (architect + user approval). Dequeue happens when select_candidate completes (not on workflow end), so later node failures cannot stall the queue. Eval outcome (proposed/failed/overlap) is persisted to eval_history.json by the coordinator to prevent indefinite re-enqueueing.",
+  "nodes": [
+    {
+      "id": "select_candidate",
+      "description": "從 promotion_queue.json 取出第一個候選，讀取 learning 內容，確認 suggested_skill",
+      "instruction": "1. Read `shared/workflows/state/promotion_queue.json` (bash cat or Read tool). Take the FIRST entry — use its `learning_id` and `suggested_skill` fields. 2. Run `bash shared/tools/conda-python.sh shared/tools/kb.py read <learning_id>` to retrieve the learning content. 3. If the queue entry has a non-empty `suggested_skill`, use it as-is. If absent or empty, derive a concise kebab-case skill name from the learning content (e.g. `bom-dual-query`). 4. List `.claude/skills-on-demand/` — if a directory with that exact name exists AND its SKILL.md content already covers this learning topic, set `overlap_found: true`. 5. Complete with `{\"learning_id\": \"<id>\", \"suggested_skill\": \"<name>\", \"overlap_found\": false}`.",
+      "depends_on": [],
+      "required": true,
+      "required_outputs": [
+        {"output_key": "learning_id"},
+        {"output_key": "suggested_skill"},
+        {"output_key": "overlap_found"}
+      ],
+      "validator": null,
+      "validator_params": {}
+    },
+    {
+      "id": "prepare_eval_set",
+      "description": "準備 5 個 trigger + 5 個 non-trigger 評測 prompt（若 overlap_found=true 則跳過）",
+      "instruction": "Read `select_candidate` outputs. If `overlap_found` is true, complete with `{\"skipped\": true, \"reason\": \"skill already covers this learning\"}`. Otherwise write eval prompts to `shared/workflows/state/eval_set_<learning_id>.json` with shape `{\"triggers\": [...5 prompts...], \"non_triggers\": [...5 prompts...]}`. Complete with `{\"eval_set_path\": \"shared/workflows/state/eval_set_<learning_id>.json\"}`.",
+      "depends_on": ["select_candidate"],
+      "required": true,
+      "required_outputs": [{"output_key": "eval_set_path"}],
+      "required_outputs_unless": "skipped",
+      "validator": null,
+      "validator_params": {}
+    },
+    {
+      "id": "run_skill_eval",
+      "description": "執行 skill-eval-grader 評測擬議 Skill 草稿（若 prepare_eval_set 已 skipped 則跳過）",
+      "instruction": "If prepare_eval_set was skipped, complete with `{\"skipped\": true, \"pass_rate\": 0, \"reason\": \"overlap, no eval needed\"}`. Otherwise delegate to skill-eval-grader agent: provide the eval set path and the draft SKILL.md content (compose in memory, do NOT write it to disk). Complete with `{\"grading_json_path\": \"shared/workflows/state/grading_<learning_id>.json\", \"pass_rate\": <0.0-1.0>}`.",
+      "depends_on": ["prepare_eval_set"],
+      "required": true,
+      "delegate_to": "skill-eval-grader",
+      "required_outputs": [{"output_key": "pass_rate"}],
+      "required_outputs_unless": "skipped",
+      "validator": null,
+      "validator_params": {}
+    },
+    {
+      "id": "propose_promotion",
+      "description": "若 pass_rate >= 0.7，寫入升級提案 JSON 並通知使用者執行 /promote。不修改 DB，不建立 SKILL.md。",
+      "instruction": "GOVERNANCE: Do NOT create or modify any SKILL.md file, and do NOT call kb.py add-learning or kb.py update. Actual skill creation requires explicit user approval via /promote → architect.\n\nRead outputs from select_candidate (learning_id, suggested_skill) and run_skill_eval (pass_rate).\n\n- If overlap_found=true OR pass_rate < 0.7: complete with `{\"proposed\": false, \"reason\": \"<overlap|below_threshold>\"}`.\n- If pass_rate >= 0.7:\n  1. Create directory `shared/workflows/state/proposals/` if it does not exist.\n  2. Write `shared/workflows/state/proposals/<learning_id>_proposal.json` with content: `{\"learning_id\": \"<id>\", \"suggested_skill\": \"<name>\", \"pass_rate\": <rate>, \"grading_json_path\": \"<path>\", \"proposed_at\": \"<iso-timestamp>\", \"status\": \"awaiting_approval\", \"next_step\": \"Run /promote to review and approve creation of this Skill\"}`.\n  3. Complete with `{\"proposed\": true, \"proposal_path\": \"shared/workflows/state/proposals/<learning_id>_proposal.json\", \"next_step\": \"Run /promote\"}`.\n\nNote: the coordinator dequeues <learning_id> from promotion_queue.json when select_candidate completes (not when this workflow ends). The coordinator also writes the eval outcome (proposed/below_threshold/overlap) to eval_history.json on workflow completion — no manual action needed.",
+      "depends_on": ["run_skill_eval"],
+      "required": true,
+      "required_outputs": [{"output_key": "proposed"}],
+      "validator": null,
+      "validator_params": {}
+    }
+  ]
+}

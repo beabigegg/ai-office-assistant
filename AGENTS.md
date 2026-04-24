@@ -73,6 +73,15 @@ These are intended overlays, not future generic targets.
     - `bom-ingest-exclusion-applier`
     - `report-builder`
   - Added `system_audit.py` and kept runtime consistency green after the split.
+  - Added a harness-native self-learning skill loop:
+    - `post_task` now scans mature learning candidates into `promotion_queue.json`
+    - new `skill_self_learning` workflow evaluates candidates and only writes approval proposals
+    - actual Skill creation still stays behind `/promote` + `architect` + explicit user approval
+  - Added durable promotion state:
+    - `promotion_state.py` manages `promotion_queue.json` and `eval_history.json`
+    - `in_progress` / `proposed` / cooldown outcomes prevent indefinite re-enqueueing
+    - queue/history read-modify-write paths now use per-file advisory locking
+  - Added skill-read usage tracking to feed promotion maturity from real SKILL.md usage.
 
 ## Next Optimization Priorities
 

@@ -24,7 +24,7 @@ import os
 import re
 import sqlite3
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 # Resolve paths
@@ -531,6 +531,32 @@ def cmd_search(args):
 # read
 # ═══════════════════════════════════════════════════════════
 
+def _increment_node_usage(conn, node_id):
+    """Bump usage_count + last_read_at in a node's meta_json. Silent on error."""
+    try:
+        row = conn.execute(
+            "SELECT meta_json FROM nodes WHERE id=?", (node_id,)
+        ).fetchone()
+        if row is None:
+            return
+        raw = row[0] if not isinstance(row, sqlite3.Row) else row['meta_json']
+        try:
+            meta = json.loads(raw) if raw else {}
+            if not isinstance(meta, dict):
+                meta = {}
+        except Exception:
+            meta = {}
+        meta['usage_count'] = int(meta.get('usage_count', 0) or 0) + 1
+        meta['last_read_at'] = datetime.now(timezone.utc).isoformat()
+        conn.execute(
+            "UPDATE nodes SET meta_json=? WHERE id=?",
+            (json.dumps(meta, ensure_ascii=False), node_id),
+        )
+        conn.commit()
+    except Exception:
+        pass
+
+
 def cmd_read(args):
     conn = _get_conn()
     _ensure_schema(conn)
@@ -571,6 +597,8 @@ def cmd_read(args):
             print(f"Target: {row['target']}")
             print(f"Summary: {row['summary']}")
         print()
+        # 增加使用計數
+        _increment_node_usage(conn, row['id'])
     conn.close()
 
 
