@@ -8,7 +8,7 @@
 - **知識架構**：DB-first 知識圖譜（SQLite + Embedding 語意檢索）+ 按需載入 Skill
 - **Workflow 引擎**：資料入庫、分析報告、知識生命週期、Post-Task Checklist
 - **Office 文件建立**：Code-based 首選（openpyxl / docx-js / pptxgenjs），MCP COM 編輯已有檔案
-- **Sub-agent 委派**：report-builder、query-runner、architect、table-reader、response-drafter 及 ingest-* 系列
+- **Sub-agent 委派**：office-report-engine、query-runner、architect、table-reader、questionnaire-response-drafter、ingest-exclusion-engine 與 ingest-* 系列
 - **MCP 伺服器**：Excel / Word / PowerPoint COM 自動化（Windows，編輯已有檔案）
 - **PDF 處理**：pypdf / pdfplumber / reportlab（文字提取、合併、新建）
 
@@ -84,14 +84,14 @@ conda env update -f environment.yml --prune
 
 | Agent | 功能 |
 |-------|------|
-| `report-builder` | Office 文件建立/修改（Excel / Word / PPT / PDF） |
+| `office-report-engine` | 通用 Office 文件建立/修改；公司模板需求再 consult `report-builder` overlay |
 | `query-runner` | SQL 查詢執行（大量結果隔離） |
 | `architect` | 架構審查、系統演化（/evolve） |
 | `table-reader` | PDF 複雜表格視覺提取 |
-| `response-drafter` | 批量 LLM API 呼叫（>20 項問卷） |
+| `questionnaire-response-drafter` | 批量 LLM API 呼叫（>20 項問卷） |
 | `ingest-archiver` | 資料入庫：封存原始檔 |
 | `ingest-structure-detector` | 資料入庫：偵測欄位結構 |
-| `ingest-exclusion-applier` | 資料入庫：套用排除規則 |
+| `ingest-exclusion-engine` | 通用排除規則執行；公司 BOM/ECR 規則再 consult `bom-ingest-exclusion-applier` overlay |
 | `ingest-db-writer` | 資料入庫：寫入 SQLite |
 | `ingest-validator` | 資料入庫：後驗品質檢查 |
 

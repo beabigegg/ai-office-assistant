@@ -3,7 +3,7 @@
   "description": "Systematic quality validation after DB insert. Runs the data_ingestion__post_validation.yaml checklist: NULL rate, duplicate rows, value-domain sanity, and tracking-column presence. Produces checklist_responses for check_checklist + check_traceability validators.",
   "input_schema": {
     "type": "object",
-    "required": ["project", "db_path", "operation_id", "tables_written"],
+    "required": ["project", "db_path", "operation_id", "tables"],
     "properties": {
       "project": {"type": "string"},
       "db_path": {"type": "string"},
@@ -11,10 +11,15 @@
         "type": "string",
         "description": "Scope all checks to rows stamped with this operation_id (current batch)."
       },
+      "tables": {
+        "type": "array",
+        "items": {"type": "string"},
+        "description": "Canonical table-name list to validate. Checklist items run per-table."
+      },
       "tables_written": {
         "type": "array",
         "items": {"type": "string"},
-        "description": "Tables to validate. Checklist items run per-table."
+        "description": "Backward-compatible alias. New code should pass `tables`."
       },
       "checklist_path": {
         "type": "string",
@@ -27,37 +32,45 @@
     "required": ["checklist_responses", "overall_status"],
     "properties": {
       "checklist_responses": {
-        "type": "array",
-        "description": "One entry per checklist item (pv-001 … pv-NNN). Consumed by check_checklist validator.",
-        "items": {
-          "type": "object",
-          "required": ["id", "status", "evidence"],
-          "properties": {
-            "id": {"type": "string", "description": "Checklist item id, e.g. 'pv-001'."},
-            "status": {
-              "type": "string",
-              "enum": ["pass", "fail", "warn", "na"]
-            },
-            "evidence": {
-              "type": "string",
-              "description": "Plain-text evidence line. Must contain a token matching the checklist item's evidence_pattern regex."
-            },
-            "details": {
+        "description": "Preferred shape is a list of objects; validator also accepts legacy {id: evidence} dicts for backward compatibility.",
+        "oneOf": [
+          {
+            "type": "array",
+            "items": {
               "type": "object",
-              "description": "Structured details per check type.",
+              "required": ["id", "status", "evidence"],
               "properties": {
-                "null_rates": {"type": "object", "description": "{column: fraction}"},
-                "duplicate_groups": {"type": "integer"},
-                "value_ranges": {"type": "object", "description": "{column: {min, max, distinct}}"},
-                "tracking_missing": {
-                  "type": "array",
-                  "items": {"type": "string"},
-                  "description": "Tables/columns missing _operation_id etc."
+                "id": {"type": "string", "description": "Checklist item id, e.g. 'pv-001'."},
+                "status": {
+                  "type": "string",
+                  "enum": ["pass", "fail", "warn", "na"]
+                },
+                "evidence": {
+                  "type": "string",
+                  "description": "Plain-text evidence line. Must contain a token matching the checklist item's evidence_pattern regex."
+                },
+                "details": {
+                  "type": "object",
+                  "description": "Structured details per check type.",
+                  "properties": {
+                    "null_rates": {"type": "object", "description": "{column: fraction}"},
+                    "duplicate_groups": {"type": "integer"},
+                    "value_ranges": {"type": "object", "description": "{column: {min, max, distinct}}"},
+                    "tracking_missing": {
+                      "type": "array",
+                      "items": {"type": "string"},
+                      "description": "Tables/columns missing _operation_id etc."
+                    }
+                  }
                 }
               }
             }
+          },
+          {
+            "type": "object",
+            "description": "Legacy map form: {checklist_id: evidence_string}"
           }
-        }
+        ]
       },
       "overall_status": {
         "type": "string",

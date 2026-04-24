@@ -1,6 +1,7 @@
 # Local Internal Assets
 
 這份文件說明哪些 agent / skill 屬於公司內部資產，已從 git 追蹤移除，只保留在本機。
+它也說明 generic engine / internal overlay 拆分後，哪些 transitional 依賴仍然存在。
 
 原則：
 
@@ -51,7 +52,7 @@
 
 若這些檔不在本機，`data_ingestion` 雖仍有 workflow 定義，但無法實際委派到對應 agent。
 
-另外 `apply_exclusions` 的 embedded rules 依賴 internal skills：
+另外 `apply_exclusions` 的 runtime 已改由 `ingest-exclusion-engine` 執行，但 embedded rules 與專案排除政策仍依賴 internal skills：
 
 - `bom-rules`
 - `package-code`
@@ -79,11 +80,11 @@
 
 ### `analysis_report`
 
-workflow 本身仍可跑，但若實際輸出需要公司模板或內部報表工作方式，會依賴：
+workflow 的 generic 產出已改由 `office-report-engine` 執行，但若實際輸出需要公司模板或內部報表工作方式，仍會依賴：
 
 - `report-builder`
 - `pptx-template`
-- `reliability-testing`
+- `internal-reliability-practice`
 - 其他 internal domain skills
 
 ### `process-analysis` / `graph-rag` / `MES`
@@ -148,12 +149,19 @@ python shared/tools/sync_agent_rules.py --apply
 
 1. 建立 private internal bundle（zip / private repo / encrypted backup）
 2. 建立 `restore_internal_assets.ps1` 或類似腳本
-3. 把混合型 skill 逐步拆成：
-   - generic base
-   - internal overlay
+3. 把尚未 generic 化完成的 internal 能力逐步拆成：
+    - generic base
+    - internal overlay
 
-目前最值得優先拆的：
+目前最值得優先收尾的 transitional 項目：
 
-- `reliability-testing`
-- `report-builder`
-- `bom-ingest-exclusion-applier`
+- `ingest-archiver`
+- `ingest-structure-detector`
+- `ingest-db-writer`
+- `ingest-validator`
+
+已完成第一輪拆分、但仍需持續防回歸的項目：
+
+- `reliability-testing`：現為 compat shim，新引用應改用 `automotive-reliability-standards`
+- `report-builder`：現為 internal overlay，generic Office 預設應走 `office-report-engine`
+- `bom-ingest-exclusion-applier`：現為 internal overlay，generic exclusion 預設應走 `ingest-exclusion-engine`

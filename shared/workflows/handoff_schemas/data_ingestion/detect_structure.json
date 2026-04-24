@@ -73,14 +73,13 @@
       },
       "proposed_tables": {
         "type": "array",
-        "description": "Suggested target DB table names (snake_case). One per ingestable sheet. User may override in confirm_with_user.",
+        "description": "Optional heuristic target table-name candidates (snake_case). These are suggestions only; final target-table choice belongs to Leader + confirm_with_user.",
         "items": {
           "type": "object",
           "required": ["sheet", "table_name"],
           "properties": {
             "sheet": {"type": "string"},
-            "table_name": {"type": "string"},
-            "exists_in_db": {"type": "boolean", "description": "True if DB already has this table; downstream must align columns."}
+            "table_name": {"type": "string"}
           }
         }
       },

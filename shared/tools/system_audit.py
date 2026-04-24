@@ -19,6 +19,35 @@ AGENTS_DIR = CLAUDE_DIR / "agents"
 COMMANDS_DIR = CLAUDE_DIR / "commands"
 SKILLS_DIR = CLAUDE_DIR / "skills-on-demand"
 WORKFLOWS_DIR = ROOT / "shared" / "workflows" / "definitions"
+HANDOFF_SCHEMAS_DIR = ROOT / "shared" / "workflows" / "handoff_schemas" / "data_ingestion"
+PROCESS_BOM_SKILL_PATH = CLAUDE_DIR / "skills-on-demand" / "process-bom-semantics" / ".skill.yaml"
+DOC_PATHS = [
+    ROOT / "README.md",
+    ROOT / "LOCAL_INTERNAL_SETUP.md",
+    ROOT / "AGENTS.md",
+    ROOT / "AGENT_SKILL_GOVERNANCE.md",
+    CLAUDE_DIR / "CLAUDE.md",
+]
+
+FORBIDDEN_WORKFLOW_DELEGATES = {
+    "report-builder": "generic Office work must route through office-report-engine",
+    "bom-ingest-exclusion-applier": "generic exclusion execution must route through ingest-exclusion-engine",
+}
+STALE_ALIASES = {
+    "response-drafter": "questionnaire-response-drafter",
+    "ingest-exclusion-applier": "ingest-exclusion-engine",
+}
+RELIABILITY_COMPAT_ALLOWED_PATHS = {
+    ROOT / "AGENTS.md",
+    ROOT / "AGENT_SKILL_GOVERNANCE.md",
+    ROOT / "LOCAL_INTERNAL_SETUP.md",
+    CLAUDE_DIR / "agent-memory" / "architect" / "MEMORY.md",
+    CLAUDE_DIR / "skills-on-demand" / "reliability-testing" / "SKILL.md",
+    CLAUDE_DIR / "skills-on-demand" / "internal-reliability-practice" / "SKILL.md",
+    CLAUDE_DIR / "skills-on-demand" / "automotive-reliability-standards" / "SKILL.md",
+    ROOT / "shared" / "tools" / "decision_meta_backfill.py",
+    ROOT / "shared" / "tools" / "kb_index.py",
+}
 
 TRACKED_GENERIC_SKILLS = {
     "excel-operations",
@@ -71,6 +100,23 @@ def load_workflow_delegate_refs() -> List[Tuple[str, str, str]]:
             if delegate_to:
                 refs.append((path.name, node.get("id", "<unknown>"), delegate_to))
     return refs
+
+
+def iter_text_matches(paths: List[Path], pattern: str) -> List[Tuple[Path, int, str]]:
+    hits: List[Tuple[Path, int, str]] = []
+    regex = re.compile(pattern)
+    for path in paths:
+        if not path.exists():
+            continue
+        for idx, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+            if regex.search(line):
+                hits.append((path, idx, line.strip()))
+    return hits
+
+
+def exact_token_pattern(token: str) -> str:
+    escaped = re.escape(token)
+    return rf"(?<![A-Za-z0-9_-]){escaped}(?![A-Za-z0-9_-])"
 
 
 def scan_command_agent_refs() -> List[Tuple[str, int, str]]:
@@ -167,6 +213,109 @@ def audit_sync_state() -> List[str]:
     return issues
 
 
+def audit_governance() -> Tuple[List[str], List[str]]:
+    errors: List[str] = []
+    warns: List[str] = []
+
+    workflow_paths = sorted(WORKFLOWS_DIR.glob("*.json"))
+    for workflow_name, node_id, agent_name in load_workflow_delegate_refs():
+        reason = FORBIDDEN_WORKFLOW_DELEGATES.get(agent_name)
+        if reason:
+            errors.append(
+                f"forbidden workflow delegate: {workflow_name}:{node_id} -> {agent_name} ({reason})"
+            )
+
+    stale_scan_paths = workflow_paths + sorted(COMMANDS_DIR.glob("*.md")) + DOC_PATHS
+    for stale_name, replacement in STALE_ALIASES.items():
+        for path, line_no, _ in iter_text_matches(stale_scan_paths, exact_token_pattern(stale_name)):
+            warns.append(
+                f"stale alias: {path.relative_to(ROOT)}:{line_no} uses {stale_name}; prefer {replacement}"
+            )
+
+    compat_scan_paths = workflow_paths + sorted(COMMANDS_DIR.glob("*.md")) + DOC_PATHS + [
+        ROOT / "shared" / "tools" / "decision_meta_backfill.py",
+    ]
+    for path, line_no, _ in iter_text_matches(compat_scan_paths, exact_token_pattern("reliability-testing")):
+        if path in RELIABILITY_COMPAT_ALLOWED_PATHS:
+            continue
+        warns.append(
+            f"compat skill reference still active: {path.relative_to(ROOT)}:{line_no} uses reliability-testing"
+        )
+
+    return errors, warns
+
+
+def audit_data_ingestion_contracts() -> Tuple[List[str], List[str]]:
+    errors: List[str] = []
+    warns: List[str] = []
+
+    workflow_path = WORKFLOWS_DIR / "data_ingestion.json"
+    detect_schema_path = HANDOFF_SCHEMAS_DIR / "detect_structure.json"
+    ingest_schema_path = HANDOFF_SCHEMAS_DIR / "ingest_to_db.json"
+    post_schema_path = HANDOFF_SCHEMAS_DIR / "post_validation.json"
+
+    workflow = json.loads(workflow_path.read_text(encoding="utf-8"))
+    nodes = {node.get("id"): node for node in workflow.get("nodes", [])}
+
+    ingest_node = nodes.get("ingest_to_db", {})
+    ingest_required = {
+        item.get("output_key")
+        for item in ingest_node.get("required_outputs", [])
+        if item.get("output_key")
+    }
+    if "tables" not in ingest_required:
+        errors.append("data_ingestion.ingest_to_db must require canonical output_key 'tables'")
+
+    post_node = nodes.get("post_validation", {})
+    post_required = {
+        item.get("output_key")
+        for item in post_node.get("required_outputs", [])
+        if item.get("output_key")
+    }
+    if "tables" not in post_required:
+        errors.append("data_ingestion.post_validation must require canonical output_key 'tables'")
+
+    ingest_schema = json.loads(ingest_schema_path.read_text(encoding="utf-8"))
+    ingest_required_schema = set(ingest_schema.get("output_schema", {}).get("required", []))
+    if "tables" not in ingest_required_schema:
+        errors.append("ingest_to_db handoff schema must require canonical field 'tables'")
+    if "tables_written" in ingest_required_schema:
+        errors.append("ingest_to_db handoff schema must not require legacy field 'tables_written'")
+
+    post_schema = json.loads(post_schema_path.read_text(encoding="utf-8"))
+    post_required_schema = set(post_schema.get("input_schema", {}).get("required", []))
+    if "tables" not in post_required_schema:
+        errors.append("post_validation handoff schema must require canonical field 'tables'")
+    if "tables_written" in post_required_schema:
+        errors.append("post_validation handoff schema must not require legacy field 'tables_written'")
+
+    detect_schema = json.loads(detect_schema_path.read_text(encoding="utf-8"))
+    proposed_table_props = (
+        detect_schema.get("output_schema", {})
+        .get("properties", {})
+        .get("proposed_tables", {})
+        .get("items", {})
+        .get("properties", {})
+    )
+    if "exists_in_db" in proposed_table_props:
+        errors.append("detect_structure must not encode DB-existence checks inside proposed_tables; keep detector DB-agnostic")
+
+    if PROCESS_BOM_SKILL_PATH.exists():
+        process_bom_meta = yaml.safe_load(PROCESS_BOM_SKILL_PATH.read_text(encoding="utf-8")) or {}
+        for entry in process_bom_meta.get("applies_to_nodes", []):
+            if not isinstance(entry, dict) or entry.get("workflow") != "data_ingestion":
+                continue
+            nodes = entry.get("nodes") or []
+            if not isinstance(nodes, list):
+                nodes = [nodes]
+            if "ingest_to_db" in nodes:
+                errors.append(
+                    "process-bom-semantics must not inject rules into data_ingestion.ingest_to_db; keep BOM semantics before the generic writer boundary"
+                )
+
+    return errors, warns
+
+
 def main() -> int:
     errors: List[str] = []
     warns: List[str] = []
@@ -193,6 +342,12 @@ def main() -> int:
     warns.extend(agent_warns)
 
     warns.extend(audit_sync_state())
+    governance_errors, governance_warns = audit_governance()
+    errors.extend(governance_errors)
+    warns.extend(governance_warns)
+    ingestion_errors, ingestion_warns = audit_data_ingestion_contracts()
+    errors.extend(ingestion_errors)
+    warns.extend(ingestion_warns)
 
     print("== Agent Office Audit ==")
     print(f"agents: {len(agent_names)}")

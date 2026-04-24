@@ -51,14 +51,20 @@
   },
   "output_schema": {
     "type": "object",
-    "required": ["db_path", "tables_written", "total_rows_inserted"],
+    "required": ["db_path", "tables", "total_rows_inserted"],
     "properties": {
       "db_path": {
         "type": "string",
         "description": "Absolute path to the SQLite DB that was modified. Must contain 'workspace/db/' to satisfy workflow required_outputs."
       },
+      "tables": {
+        "type": "array",
+        "items": {"type": "string"},
+        "description": "Canonical table-name list propagated to downstream validators and nodes."
+      },
       "tables_written": {
         "type": "array",
+        "description": "Backward-compatible detailed per-table stats. New code should emit `tables` for canonical table names.",
         "items": {
           "type": "object",
           "required": ["table_name", "rows_inserted", "rows_existing_before"],

@@ -17,7 +17,7 @@
     {
       "id": "detect_structure",
       "description": "Detect file structure: columns, encoding, row count, data types",
-      "instruction": "Delegate to ingest-structure-detector agent. Brief: read archived file from {PROJECT_ROOT}/vault/originals/, detect sheets/columns/encoding/row count/merged cells. Return structure report for confirm_with_user step.",
+      "instruction": "Delegate to ingest-structure-detector agent. Brief: read archived file from {PROJECT_ROOT}/vault/originals/, detect sheets/columns/encoding/row count/merged cells. Return a structural report for confirm_with_user. If table-name suggestions are included, treat them as heuristic candidates only; final target-table choice is confirmed later, not decided inside detect_structure.",
       "depends_on": ["archive_original"],
       "required": true,
       "required_outputs": [],
@@ -27,7 +27,7 @@
     {
       "id": "confirm_with_user",
       "description": "Present structure findings and column mappings to user for confirmation. Read checklist and report responses.",
-      "instruction": "Read checklist: shared/workflows/checklists/data_ingestion__confirm_with_user.yaml. Present findings: sheet mapping, column semantics, data quality issues. Key confirmations needed: (1) correct DB table target? (2) column mappings correct? (3) -AU suffix / PANJIT digit2 handling confirmed? (4) exclusion rules scope confirmed? Wait for user confirmation before proceeding. Submit checklist_responses.",
+      "instruction": "Read checklist: shared/workflows/checklists/data_ingestion__confirm_with_user.yaml. Present findings: sheet mapping, structural anomalies, heuristic table-name candidates, and proposed column mappings. Key confirmations needed: (1) correct DB table target? (2) column mappings correct? (3) -AU suffix / PANJIT digit2 handling confirmed? (4) exclusion rules scope confirmed? Wait for user confirmation before proceeding. Submit checklist_responses.",
       "depends_on": ["detect_structure"],
       "required": true,
       "required_outputs": [],

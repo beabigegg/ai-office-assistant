@@ -26,6 +26,33 @@ CHECKLISTS_DIR = ROOT / 'shared' / 'workflows' / 'checklists'
 MIN_ANSWER_LEN = 10
 
 
+def _normalize_responses(responses):
+    """Accept both legacy dict responses and structured list-of-dict responses."""
+    if isinstance(responses, dict):
+        return {str(k): str(v) for k, v in responses.items()}
+
+    if isinstance(responses, list):
+        normalized = {}
+        for item in responses:
+            if not isinstance(item, dict):
+                continue
+            item_id = str(item.get("id", "")).strip()
+            if not item_id:
+                continue
+            evidence = str(item.get("evidence", "")).strip()
+            status = str(item.get("status", "")).strip()
+            details = item.get("details")
+            answer = evidence
+            if status:
+                answer = f"{status}: {answer}" if answer else status
+            if details:
+                answer = f"{answer} | details={details}" if answer else f"details={details}"
+            normalized[item_id] = answer
+        return normalized
+
+    return {}
+
+
 def _load_yaml(path):
     """Load YAML file, fallback to basic parsing if PyYAML unavailable."""
     if yaml:
@@ -86,7 +113,7 @@ def validate(context: dict) -> tuple:
         return True, "No active checklist items"
 
     # Check responses
-    responses = outputs.get("checklist_responses", {})
+    responses = _normalize_responses(outputs.get("checklist_responses", {}))
     if not responses:
         item_list = ', '.join(c['id'] for c in active_items)
         return False, f"Missing checklist_responses in outputs. Required: {item_list}"

@@ -184,6 +184,38 @@ update all affected references, including where applicable:
 - New generic Office work should prefer `office-report-engine`
 - New generic exclusion execution should prefer `ingest-exclusion-engine`
 
+## Data Ingestion Transitional Contracts
+
+The following four agents remain `candidate_future_generic`, but their boundaries
+must stay explicit so future splits do not drift:
+
+### `ingest-archiver`
+
+- Generic core: copy into `vault/originals/`, collision-safe naming, SHA-256, size
+- Must remain a pure file operation; no parsing, no interpretation, no project policy
+- Split blocker today: still implemented as a local runtime agent instead of a tracked generic engine
+
+### `ingest-structure-detector`
+
+- Generic core: file-format detection, sheet/column/type/row-count/merged-cell reporting
+- Must report structural facts only; domain semantics and final target-table choice stay outside this node
+- Heuristic table-name suggestions are allowed, but DB existence/alignment checks do not belong in the detector
+- Split blocker today: coverage and runtime contract are still local-only even though the behavior is mostly generic
+
+### `ingest-db-writer`
+
+- Canonical downstream contract is `db_path` + `operation_id` + `tables`
+- Detailed per-table write stats may exist, but only as supplemental output
+- Generic core: SQLite write path, tracking columns, transactionality, idempotency
+- Split blocker today: internal BOM/process rules are still embedded in the local agent, so the write-engine boundary is not yet clean
+
+### `ingest-validator`
+
+- Canonical downstream contract is `db_path` + `operation_id` + `tables` + `checklist_responses`
+- Preferred `checklist_responses` shape is list-of-dict; validators may keep backward compatibility for legacy dict outputs
+- Generic core: batch-scoped read-only validation, evidence capture, structured checklist output
+- Split blocker today: checklist policy and thresholds are still carried as local workflow assets rather than a tracked generic validation engine
+
 ## Review Policy
 
 `architect` should re-run this governance review whenever:

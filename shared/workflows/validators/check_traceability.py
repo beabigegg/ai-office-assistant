@@ -19,6 +19,21 @@ from project_ref import normalize_project_id, project_db_dir
 REQUIRED_COLUMNS = ['_operation_id', '_source_file', '_source_version', '_source_row']
 
 
+def _normalize_tables(outputs: dict) -> list[str]:
+    target_tables = outputs.get('tables', [])
+    if not target_tables:
+        legacy = outputs.get('tables_written', [])
+        if isinstance(legacy, list) and legacy and isinstance(legacy[0], dict):
+            target_tables = [item.get('table_name', '') for item in legacy]
+        else:
+            target_tables = legacy
+
+    if isinstance(target_tables, str):
+        target_tables = [target_tables]
+
+    return [table for table in target_tables if table]
+
+
 def _find_db(root: Path, project: str, outputs: dict) -> Path | None:
     """Find the project database, same pattern as check_exclusion.py."""
     # Explicit db_path in outputs takes priority
@@ -60,9 +75,7 @@ def validate(context: dict) -> tuple:
     cursor = conn.cursor()
 
     # Get tables to check
-    target_tables = outputs.get('tables', [])
-    if isinstance(target_tables, str):
-        target_tables = [target_tables]
+    target_tables = _normalize_tables(outputs)
 
     if not target_tables:
         # Check all non-system tables
