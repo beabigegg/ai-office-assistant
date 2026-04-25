@@ -47,15 +47,13 @@ conda env update -f environment.yml --prune
 │   ├── CLAUDE.md              # Claude 運行規則（每次會話自動載入）
 │   ├── agents/                # Sub-agent 定義（git 追蹤）
 │   ├── commands/              # 快速指令
-│   ├── skills/                # 領域 Skill（gitignore，由使用者建立）
-│   │   └── _skill_template/
-│   └── skills-on-demand/      # 按需載入 Skill（SKILL.md 納入 git 追蹤）
+│   └── skills-on-demand/      # 按需載入 Skill（generic tracked；internal local-only）
 │       ├── docx-authoring/    # Word 新建（docx-js）
 │       ├── docx-operations/   # Word 編輯已有（MCP COM）
 │       ├── xlsx-authoring/    # Excel 新建（openpyxl + recalc.py）
 │       ├── excel-operations/  # Excel 編輯已有（MCP COM）
 │       ├── pptx-authoring/    # PPT 新建（pptxgenjs / unpack-edit-pack）
-│       ├── pptx-template/     # PPT 公司模板（pptx_panjit）
+│       ├── pptx-brand-master/ # PPT 公司母片 overlay（pptx_panjit）
 │       ├── marp-pptx/         # PPT 快速/PDF（Marp）
 │       ├── pptx-operations/   # PPT 精修已有（MCP COM）
 │       ├── pdf/               # PDF 操作（pypdf / reportlab）
@@ -88,12 +86,12 @@ conda env update -f environment.yml --prune
 | `query-runner` | SQL 查詢執行（大量結果隔離） |
 | `architect` | 架構審查、系統演化（/evolve） |
 | `table-reader` | PDF 複雜表格視覺提取 |
-| `questionnaire-response-drafter` | 批量 LLM API 呼叫（>20 項問卷） |
-| `ingest-archiver` | 資料入庫：封存原始檔 |
-| `ingest-structure-detector` | 資料入庫：偵測欄位結構 |
+| `questionnaire-response-drafter` | 批量 LLM API 呼叫（>20 項問卷；local-only internal） |
+| `ingest-archiver` | 資料入庫：封存原始檔（local-only transitional） |
+| `ingest-structure-detector` | 資料入庫：偵測欄位結構（local-only transitional） |
 | `ingest-exclusion-engine` | 通用排除規則執行；公司 BOM/ECR 規則再 consult `bom-ingest-exclusion-applier` overlay |
-| `ingest-db-writer` | 資料入庫：寫入 SQLite |
-| `ingest-validator` | 資料入庫：後驗品質檢查 |
+| `ingest-db-writer` | 資料入庫：寫入 SQLite（local-only transitional） |
+| `ingest-validator` | 資料入庫：後驗品質檢查（local-only transitional） |
 
 ## Office 文件建立策略
 
@@ -101,8 +99,8 @@ conda env update -f environment.yml --prune
 |------|-----------|------|
 | Excel 新建 | openpyxl + recalc.py | MCP COM |
 | Word 新建 | docx-js（Node.js） | MCP COM |
-| PPT 新建（自由設計） | pptxgenjs（Node.js） | pptx-template |
-| PPT 新建（公司模板） | pptx_panjit（Python） | — |
+| PPT 新建（自由設計） | pptxgenjs（Node.js） | pptx-brand-master（僅公司母片 overlay） |
+| PPT 新建（公司母片/品牌規範） | pptx_panjit（Python） | — |
 | PPT 快速/PDF | Marp | — |
 | 任何格式**編輯已有** | MCP COM | unpack/edit/pack |
 
@@ -119,11 +117,13 @@ conda env update -f environment.yml --prune
 
 | 追蹤（框架） | 忽略（資料與知識） |
 |-------------|-------------------|
-| CLAUDE.md, agents/, commands/, workflows/ | skills/ 實際內容、agent-memory |
+| CLAUDE.md, agents/, commands/, workflows/ | agent-memory、local-only internal assets |
 | skills-on-demand/*/SKILL.md | .skill.yaml（eval 元數據） |
 | shared/tools/（含 office/ pptx/ docx/ pdf/） | shared/kb/（知識庫內容） |
 | projects/_template/ | projects/* 實際專案資料 |
 | environment.yml, init.py | `.env`, `.mcp.json`, `*.db` |
+
+註：完整 internal runtime 仍需搭配本機 private asset bundle；詳見 [`LOCAL_INTERNAL_SETUP.md`](LOCAL_INTERNAL_SETUP.md)。
 
 ## 延伸閱讀
 

@@ -60,11 +60,48 @@ This repository extends Claude Code CLI into an office assistant. Future agent w
 - `bom-ingest-exclusion-applier`
 - `report-builder`
 - `internal-reliability-practice`
-- `pptx-template`
+- `pptx-brand-master`
 
 These are intended overlays, not future generic targets.
 
+## Current Residual Assessment (2026-04-24)
+
+### Resolved
+
+- Canonical `PROJECT_ID` vs `PROJECT_ROOT` split is now the active baseline.
+- Windows repo-Python execution is standardized on `bash shared/tools/conda-python.sh ...`.
+- KB authority is DB-first (`shared/kb/knowledge_graph/kb_index.db`), with markdown treated as export/read surface only.
+- Generic vs internal overlay boundaries are explicit for Office reporting, exclusion execution, and automotive reliability standards.
+- `system_audit.py` now covers both governance consistency and structural drift, and the current baseline is green at `0 errors / 0 warnings`.
+- Remaining framework docs/templates/tools no longer carry active legacy skill-path, mixed placeholder, or old Windows launch-pattern drift.
+
+### Truly Unresolved
+
+- `data_ingestion` still depends on four local runtime agents (`ingest-archiver`, `ingest-structure-detector`, `ingest-db-writer`, `ingest-validator`) that remain `candidate_future_generic`.
+- Skills derived from standards/docs still lack a full source-update governance loop: source mapping, version drift detection, revalidation, and deprecation handling are not complete yet.
+- A fresh git-only clone is still not a full office assistant runtime; internal assets must be restored from a private bundle/source.
+
+### Deferable
+
+- `kb.py` CLI discoverability can still be improved so agents stop guessing unsupported flags.
+- Runtime cost slimming for `post_task` / `data_ingestion` is still valuable, but it is now optimization work rather than an architectural correctness blocker.
+- A dedicated internal asset restore script/bundle would improve operator UX, but current manual restoration is functional.
+
 ## Change Log
+
+- `2026-04-25`
+  - Renamed the company PPT overlay skill from `pptx-template` to `pptx-brand-master`.
+  - Reframed company PPT generation around PANJIT brand-master rules instead of a fixed content template model.
+  - Added formal PANJIT baseline assets:
+    - `brand_spec.panjit.json`
+    - `brand_logo.panjit.png`
+  - Added brand-spec extraction and demo flows to `shared/tools/pptx_panjit.py`:
+    - `dump-spec`
+    - `demo-with-spec`
+    - `extract-spec`
+  - Made `PanjitBrandMasterPresentation()` default to the formal PANJIT baseline spec.
+  - Fixed Windows/Git Bash path normalization and local `pptx` package shadowing in both `pptx_panjit.py` and `office_validator.py`.
+  - Updated `analysis_report`, `office-report-engine`, and `report-builder` so future company PPT generation routes use the new brand-master flow.
 
 - `2026-04-24`
   - Added formal agent/skill governance and lifecycle rules.
@@ -96,9 +133,9 @@ These are intended overlays, not future generic targets.
 ## Next Optimization Priorities
 
 1. Real-world test `data_ingestion` on an actual new file import.
-2. Add a system-wide audit command for workflow/agent/KB consistency.
+2. Add source-update governance for standards/document-derived skills.
 3. Improve `kb.py` CLI discoverability so Claude stops guessing unsupported flags.
-4. Keep shrinking prompt-layer ambiguity; prefer executable workflow hints over descriptive prose.
+4. Package internal asset restore into a private bundle/script path instead of manual copy-only guidance.
 
 ## Do Not Regress
 

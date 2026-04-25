@@ -1,0 +1,57 @@
+{
+  "slide_width": 13.333333333333334,
+  "slide_height": 7.5,
+  "title_area": {
+    "left": 0.61,
+    "top": 0.1,
+    "width": 10.12,
+    "height": 0.8
+  },
+  "section_label_area": {
+    "left": 0.59,
+    "top": 0.94,
+    "width": 10.12,
+    "height": 0.3
+  },
+  "content_area": {
+    "left": 0.42,
+    "top": 1.35,
+    "width": 12.5,
+    "height": 5.64
+  },
+  "footer_area": {
+    "left": 4.36,
+    "top": 7.18,
+    "width": 5.94,
+    "height": 0.29
+  },
+  "page_num_area": {
+    "left": 12.42,
+    "top": 7.14,
+    "width": 0.63,
+    "height": 0.4
+  },
+  "header_line_area": {
+    "left": 0.65,
+    "top": 0.8,
+    "width": 10.65,
+    "height": 0.03
+  },
+  "content_logo_area": {
+    "left": 11.34,
+    "top": 0.23,
+    "width": 1.51,
+    "height": 0.61
+  },
+  "footer_text": "Copyright© 2025 PANJIT International Inc. All rights reserved.",
+  "color_primary": "1F4E79",
+  "color_secondary": "D6E4F0",
+  "color_accent": "F4B084",
+  "color_text": "1F2937",
+  "color_muted": "6B7280",
+  "color_white": "FFFFFF",
+  "font_cjk": "Microsoft JhengHei",
+  "font_latin": "Calibri",
+  "content_logo_path": "D:\\ai-office\\.claude\\skills-on-demand\\pptx-brand-master\\brand_logo.panjit.png",
+  "cover_logo_path": "D:\\ai-office\\.claude\\skills-on-demand\\pptx-brand-master\\brand_logo.panjit.png"
+}

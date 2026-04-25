@@ -35,14 +35,14 @@
     {
       "id": "generate_report",
       "description": "Generate output report (Excel/Word/PPT) to vault/outputs/",
-      "instruction": "Delegate to office-report-engine for report generation. Output path: {PROJECT_ROOT}/vault/outputs/<name>_YYYYMMDD.<ext>. Brief must include: query results data structure, column definitions, output format requirements, and whether company template / internal reporting style is explicitly required. If company template or company-standard visual language is required, consult the local report-builder overlay before execution.",
+      "instruction": "Delegate to office-report-engine for report generation. Output path: {PROJECT_ROOT}/vault/outputs/<name>_YYYYMMDD.<ext>. Brief must include: query results data structure, column definitions, output format requirements, and whether company brand master / internal reporting style is explicitly required. If company brand master or company-standard visual language is required, consult the local report-builder overlay before execution.",
       "depends_on": ["cross_validate"],
       "required": true,
       "required_outputs": [
         {"path_contains": "vault/outputs/", "description": "report written to vault/outputs/"}
       ],
       "delegate_to": "office-report-engine",
-      "delegate_hint": "Use office-report-engine for generic Office generation; consult report-builder only for company template / internal reporting overlay",
+      "delegate_hint": "Use office-report-engine for generic Office generation; consult report-builder only for company brand-master / internal reporting overlay",
       "validator": null,
       "validator_params": {}
     },

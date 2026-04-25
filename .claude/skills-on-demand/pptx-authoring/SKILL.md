@@ -5,7 +5,7 @@ tracking: tracked
 description: |
   WHAT：用 pptxgenjs（Node.js）從零建立原生可編輯 .pptx（自由設計，非公司模板）。
   WHEN：全新簡報設計、需在 PowerPoint 內直接編輯、不受公司模板限制、程式化生成。
-  NOT：公司標準模板請用 pptx-template；精修已有 .pptx 請用 pptx-operations；快速 PDF 分發請用 marp-pptx。
+  NOT：公司品牌母片請用 pptx-brand-master；精修已有 .pptx 請用 pptx-operations；快速 PDF 分發請用 marp-pptx。
 triggers:
   - pptxgenjs, pptx-js, Node.js PPT
   - 新建 pptx, 從零建立簡報, 程式化簡報
@@ -188,6 +188,6 @@ python /d/ai-office/shared/tools/office/pack.py unpacked/ output.pptx --original
 | 需求 | 工具 |
 |------|------|
 | 全新設計，需可在 PowerPoint 編輯 | pptxgenjs（本 skill） |
-| 公司標準模板（Panjit） | pptx-template skill |
+| 公司品牌母片（Panjit） | pptx-brand-master skill |
 | 快速產出 / PDF 分發 | marp-pptx skill |
 | 修改已有 .pptx | pptx-operations skill（MCP）或 unpack/edit/pack |

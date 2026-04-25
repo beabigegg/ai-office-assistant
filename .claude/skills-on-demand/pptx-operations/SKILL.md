@@ -5,7 +5,7 @@ tracking: tracked
 description: |
   WHAT：透過 mcp__pptx__* 工具（COM 自動化）精修已有 .pptx，處理原生圖表、複雜表格、版面調整。
   WHEN：修改現有簡報、add_chart 原生可編輯圖表、20+ 欄 add_table、delete_shape 清理 placeholder。
-  NOT：從零新建簡報請用 pptx-authoring 或 pptx-template；Markdown 大量內容請用 marp-pptx。
+  NOT：從零新建簡報請用 pptx-authoring 或 pptx-brand-master；Markdown 大量內容請用 marp-pptx。
 triggers:
   - mcp__pptx, MCP PPTX, PPTX COM
   - add_chart, add_table, add_rich_textbox, modify_shape

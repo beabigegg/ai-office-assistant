@@ -32,7 +32,7 @@ memory: project
 | PPT **精修已有** | `Read .claude/skills-on-demand/pptx-operations/SKILL.md` |
 | PDF 操作/提取/新建 | `Read .claude/skills-on-demand/pdf/SKILL.md` |
 
-**公司模板、公司色彩、公司交付慣例不屬本 engine。需要時，另行 consult `report-builder` overlay。**
+**公司品牌母片、公司色彩、公司交付慣例不屬本 engine。需要時，另行 consult `report-builder` overlay。**
 
 ## Role
 
@@ -69,7 +69,7 @@ memory: project
 - 全新、自由設計、需要原生可編輯 `.pptx` → `pptx-authoring`
 - 快速摘要 / PDF 分發 / Markdown 轉簡報 → `marp-pptx`
 - 修改已有 `.pptx` → `pptx-operations`
-- 若使用者明確要求公司模板或公司標準版型 → consult `report-builder`
+- 若使用者明確要求公司品牌母片或公司標準版型 → consult `report-builder`
 
 ## Workflow Patterns
 
@@ -130,4 +130,4 @@ bash shared/tools/conda-python.sh shared/tools/office_validator.py "<saved_file_
 - 同一時間只開一個 Excel/Word/PPT COM 實例
 - 完成後必須 close 釋放 COM 資源
 - 既有檔案編輯才用 MCP COM；新建優先 code-based
-- 公司模板、公司色彩、公司版型、公司交付慣例不屬本 engine
+- 公司品牌母片、公司色彩、公司版型、公司交付慣例不屬本 engine

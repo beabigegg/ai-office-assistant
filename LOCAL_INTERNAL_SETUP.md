@@ -6,7 +6,7 @@
 原則：
 
 - `generic`：可追蹤、可提交、可跨公司重用
-- `internal`：含公司流程、內部判讀、客戶案例、公司模板、專案知識，不進版控
+- `internal`：含公司流程、內部判讀、客戶案例、公司母片/品牌規範、專案知識，不進版控
 
 ## 1. Internal Assets 清單
 
@@ -36,7 +36,7 @@
 - `.claude/skills-on-demand/process-bom-semantics/`
 - `.claude/skills-on-demand/reliability-testing/`
 - `.claude/skills-on-demand/plm-pdf-ingestion/`
-- `.claude/skills-on-demand/pptx-template/`
+- `.claude/skills-on-demand/pptx-brand-master/`
 
 ## 2. 哪些流程依賴它們
 
@@ -82,10 +82,10 @@
 
 ### `analysis_report`
 
-workflow 的 generic 產出已改由 `office-report-engine` 執行，但若實際輸出需要公司模板或內部報表工作方式，仍會依賴：
+workflow 的 generic 產出已改由 `office-report-engine` 執行，但若實際輸出需要公司母片/品牌規範或內部報表工作方式，仍會依賴：
 
 - `report-builder`
-- `pptx-template`
+- `pptx-brand-master`
 - `internal-reliability-practice`
 - 其他 internal domain skills
 
@@ -144,6 +144,26 @@ bash shared/tools/conda-python.sh shared/tools/sync_agent_rules.py --apply
 - 不代表一個全新 clone 的 repo 單靠 git 就能跑出完整 office assistant
 
 這是刻意的 tradeoff，用來避免公司內部知識被 push。
+
+## 5.1 現在版本的殘留重評估（2026-04-24）
+
+### 已解決
+
+- framework 文件/模板中的 legacy skill-path、mixed placeholder、old Windows launch patterns、以及 bare repo-Python 示例已清理。
+- `system_audit.py` 現在同時覆蓋治理一致性與結構漂移，當前基線為 `0 errors / 0 warnings`。
+- `report-builder` / `bom-ingest-exclusion-applier` / `reliability-testing` 已完成第一輪 generic-vs-overlay / compat 分流，不再屬於活躍架構殘留。
+
+### 真正未解
+
+- 新 clone 仍需自行恢復 internal assets；repo 本身不提供完整 runtime。
+- `data_ingestion` 的四個 local runtime agents 仍是過渡型資產，不是 generic engine。
+- standards/document-derived skills 的 source-version 更新治理仍未完成。
+
+### 可延後
+
+- private bundle / restore script 自動化
+- `kb.py` CLI 可發現性優化
+- 進一步壓縮 `post_task` / `data_ingestion` 的 runtime 成本
 
 ## 6. 後續建議
 

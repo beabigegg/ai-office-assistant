@@ -1,0 +1,57 @@
+{
+  "slide_width": 13.333333333333334,
+  "slide_height": 7.5,
+  "title_area": {
+    "left": 0.6090594925634296,
+    "top": 0.09843613298337708,
+    "width": 10.116205161854769,
+    "height": 0.7969160104986877
+  },
+  "section_label_area": {
+    "left": 0.59,
+    "top": 0.94,
+    "width": 10.12,
+    "height": 0.3
+  },
+  "content_area": {
+    "left": 0.42,
+    "top": 1.35,
+    "width": 12.5,
+    "height": 5.64
+  },
+  "footer_area": {
+    "left": 4.362847769028871,
+    "top": 7.180555555555555,
+    "width": 5.939235564304462,
+    "height": 0.2864588801399825
+  },
+  "page_num_area": {
+    "left": 12.42013888888889,
+    "top": 7.140625546806649,
+    "width": 0.6284722222222222,
+    "height": 0.3993055555555556
+  },
+  "header_line_area": {
+    "left": 0.6475699912510936,
+    "top": 0.7968755468066492,
+    "width": 10.645833333333334,
+    "height": 0.0
+  },
+  "content_logo_area": {
+    "left": 11.342014435695537,
+    "top": 0.23090332458442694,
+    "width": 1.5104166666666667,
+    "height": 0.6145833333333334
+  },
+  "footer_text": "Copyright© 2025 PANJIT International Inc. All rights reserved.",
+  "color_primary": "1F4E79",
+  "color_secondary": "D6E4F0",
+  "color_accent": "F4B084",
+  "color_text": "1F2937",
+  "color_muted": "6B7280",
+  "color_white": "FFFFFF",
+  "font_cjk": "Microsoft JhengHei",
+  "font_latin": "Calibri",
+  "content_logo_path": "D:\\ai-office\\.claude\\skills-on-demand\\pptx-brand-master\\brand_logo.ecr_ecn.sample.png",
+  "cover_logo_path": "D:\\ai-office\\.claude\\skills-on-demand\\pptx-brand-master\\brand_logo.ecr_ecn.sample.png"
+}

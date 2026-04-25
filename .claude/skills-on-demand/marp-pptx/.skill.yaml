@@ -16,7 +16,7 @@ triggers:
 requires:
   tools: []
   related_skills:
-    - pptx-template
+    - pptx-brand-master
     - pptx-operations
 
 constraints:

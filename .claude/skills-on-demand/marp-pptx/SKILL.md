@@ -5,7 +5,7 @@ tracking: tracked
 description: |
   WHAT：用 Marp Markdown 生成 PPTX/PDF，走 marp_build.py + semicon.css 主題。
   WHEN：標題/目錄/摘要頁、KPI callout、雙欄、Markdown 大量內容轉簡報、PDF 分發。
-  NOT：客戶可編輯的原生圖表、20+ 欄表格、公司模板請用 pptx-template 或 pptx-operations。
+  NOT：客戶可編輯的原生圖表、20+ 欄表格、公司品牌母片請用 pptx-brand-master 或 pptx-operations。
 triggers:
   - Marp, marp-pptx, marp_build, marp markdown
   - Markdown 簡報, 簡報 md, md to pptx

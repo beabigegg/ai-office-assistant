@@ -14,10 +14,26 @@ Office Document Validator — 驗證 PPTX / DOCX / XLSX 產出品質
 
 import argparse
 import json
+import re
 import sys
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
 from typing import Optional
+
+# Avoid local `shared/tools/pptx/` shadowing the third-party `python-pptx` package.
+_THIS_DIR = Path(__file__).resolve().parent
+sys.path = [p for p in sys.path if Path(p).resolve() != _THIS_DIR]
+
+
+def _normalize_cli_path(path: str) -> str:
+    if not path:
+        return path
+    m = re.match(r"^/([a-zA-Z])/(.+)$", path)
+    if m:
+        drive = m.group(1).upper()
+        tail = m.group(2).replace("/", "\\")
+        return f"{drive}:\\{tail}"
+    return path
 
 
 # ---------------------------------------------------------------------------
@@ -536,20 +552,21 @@ VALIDATORS = {
 
 def validate(file_path: str) -> ValidationResult:
     """驗證 Office 文件，根據副檔名自動選擇驗證器。"""
-    p = Path(file_path)
+    normalized = _normalize_cli_path(file_path)
+    p = Path(normalized)
     if not p.exists():
-        r = ValidationResult(file_path=file_path, file_type="UNKNOWN")
-        r.add("ERROR", "FILE-001", f"File not found: {file_path}")
+        r = ValidationResult(file_path=normalized, file_type="UNKNOWN")
+        r.add("ERROR", "FILE-001", f"File not found: {normalized}")
         return r
 
     ext = p.suffix.lower()
     validator = VALIDATORS.get(ext)
     if not validator:
-        r = ValidationResult(file_path=file_path, file_type=ext)
+        r = ValidationResult(file_path=normalized, file_type=ext)
         r.add("ERROR", "FILE-002", f"Unsupported file type: {ext}")
         return r
 
-    return validator(file_path)
+    return validator(normalized)
 
 
 # ---------------------------------------------------------------------------
@@ -570,9 +587,10 @@ def render_to_images(file_path: str, output_dir: Optional[str] = None,
     """
     import pypdfium2 as pdfium
 
-    p = Path(file_path)
+    normalized = _normalize_cli_path(file_path)
+    p = Path(normalized)
     if not p.exists():
-        raise FileNotFoundError(f"PDF not found: {file_path}")
+        raise FileNotFoundError(f"PDF not found: {normalized}")
 
     if output_dir is None:
         output_dir = str(p.parent / "_visual_qa")
@@ -625,7 +643,8 @@ def visual_qa(file_path: str, output_dir: Optional[str] = None) -> dict:
         "instructions": "Use Claude Read tool to view each PNG, then report issues."
     }
     """
-    p = Path(file_path)
+    normalized = _normalize_cli_path(file_path)
+    p = Path(normalized)
     ext = p.suffix.lower()
 
     # 若非 PDF，需先轉換（提示使用者用 MCP 匯出）
@@ -639,7 +658,7 @@ def visual_qa(file_path: str, output_dir: Optional[str] = None) -> dict:
             }.get(ext, "Convert to PDF first."),
         }
 
-    png_paths = render_to_images(file_path, output_dir)
+    png_paths = render_to_images(normalized, output_dir)
 
     return {
         "pdf_path": str(p),

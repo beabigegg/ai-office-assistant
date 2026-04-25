@@ -177,7 +177,7 @@ overlay (same pattern as `ingest-exclusion-engine` + `bom-ingest-exclusion-appli
 | `mil-std-750` | internal | local-only | keep | internalized standards usage |
 | `package-code` | internal | local-only | keep | company package-code semantics |
 | `plm-pdf-ingestion` | internal | local-only | keep | internal PLM ingestion practices |
-| `pptx-template` | internal | local-only | overlay | company PPT template route |
+| `pptx-brand-master` | internal | local-only | overlay | company PPT master/brand overlay route |
 | `process-bom-semantics` | internal | local-only | keep | company BOM/process semantics |
 | `questionnaire-response` | internal | local-only | keep | customer/internal response workflow |
 | `reliability-testing` | internal | local-only | compat | no new direct dependencies |
@@ -190,6 +190,26 @@ overlay (same pattern as `ingest-exclusion-engine` + `bom-ingest-exclusion-appli
 - No workflow should use `bom-ingest-exclusion-applier` as the generic executor
 - New generic Office work should prefer `office-report-engine`
 - New generic exclusion execution should prefer `ingest-exclusion-engine`
+
+## Current Residual Classification (2026-04-24)
+
+### Resolved Baseline
+
+- Generic/core vs internal/overlay boundaries are now explicit for Office generation, exclusion execution, and automotive reliability standards.
+- Structural drift around legacy skill paths, `{P}`, and Windows execution examples is now covered by `system_audit.py`.
+- Current baseline is operationally green: `system_audit.py` returns `0 errors / 0 warnings`.
+
+### Truly Unresolved Governance Gaps
+
+- The four `data_ingestion` runtime agents remain `candidate_future_generic`; their split has not happened yet, only the graduation rule has been clarified.
+- Standards/document-derived skills still do not have a full lifecycle for source-version drift, revalidation, and retirement.
+- Internal assets are intentionally excluded from tracked repo history, so full-clone portability is still incomplete by design.
+
+### Deferable / Optimization-Only
+
+- Runtime cost slimming for `post_task` / `data_ingestion`
+- `kb.py` CLI discoverability improvements
+- Internal asset restore automation
 
 ## Data Ingestion Transitional Contracts
 
