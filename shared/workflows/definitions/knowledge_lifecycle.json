@@ -26,22 +26,28 @@
     },
     {
       "id": "sync_knowledge_index",
-      "description": "Sync dynamic KB changes to kb_index.db after writing",
-      "instruction": "Run: bash shared/tools/conda-python.sh shared/tools/kb.py build-edges. This updates knowledge graph edges after new nodes added. Optionally: bash shared/tools/conda-python.sh shared/tools/kb.py validate --warn-exit-zero to check consistency.",
+      "description": "Sync dynamic KB changes to kb_index.db and refresh markdown exports after writing",
+      "instruction": "Run: bash shared/tools/conda-python.sh shared/tools/kb.py build-edges, then bash shared/tools/conda-python.sh shared/tools/kb.py export all. This keeps both graph edges and .md exports current after new nodes are added. Complete with `{\"index_synced\":true,\"exports_refreshed\":true}`.",
       "depends_on": ["write_to_dynamic"],
-      "required": false,
-      "required_outputs": [],
-      "validator": null,
+      "required": true,
+      "required_outputs": [
+        {"output_key": "index_synced", "description": "knowledge graph edge queue processed"},
+        {"output_key": "exports_refreshed", "description": "markdown exports refreshed from DB"}
+      ],
+      "validator": "check_sync_knowledge_index",
       "validator_params": {}
     },
     {
       "id": "check_promote_threshold",
       "description": "Check if dynamic KB has enough validated entries to suggest /promote",
-      "instruction": "Run: bash shared/tools/conda-python.sh shared/tools/kb.py catalog. If dynamic/ has ≥5 entries with status:active and confidence:high, suggest user run /promote for skill upgrade review.",
+      "instruction": "Count active learning entries whose meta_json confidence is `high`. Complete with `{\"active_high_count\": <int>, \"suggest_run_promote\": <bool>, \"reason\": \"<brief>\"}` where `suggest_run_promote` is true iff `active_high_count >= 5`.",
       "depends_on": ["write_to_dynamic"],
-      "required": false,
-      "required_outputs": [],
-      "validator": null,
+      "required": true,
+      "required_outputs": [
+        {"output_key": "active_high_count", "description": "active high-confidence learning count"},
+        {"output_key": "suggest_run_promote", "description": "whether /promote should be suggested"}
+      ],
+      "validator": "check_promote_threshold",
       "validator_params": {}
     }
   ]

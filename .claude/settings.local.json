@@ -1,0 +1,219 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip show:*)",
+      "Bash(pip install:*)",
+      "Bash(python:*)",
+      "WebSearch",
+      "WebFetch(domain:www.henkel-adhesives.com)",
+      "WebFetch(domain:www.matweb.com)",
+      "WebFetch(domain:www.ulprospector.com)",
+      "WebFetch(domain:www.gluespec.com)",
+      "WebFetch(domain:datasheets.globalspec.com)",
+      "WebFetch(domain:www.caplinq.com)",
+      "mcp__plugin_playwright_playwright__browser_navigate",
+      "mcp__plugin_playwright_playwright__browser_snapshot",
+      "mcp__plugin_playwright_playwright__browser_click",
+      "mcp__plugin_playwright_playwright__browser_close",
+      "WebFetch(domain:www.aecouncil.com)",
+      "WebFetch(domain:toshiba.semicon-storage.com)",
+      "mcp__plugin_playwright_playwright__browser_take_screenshot",
+      "mcp__plugin_playwright_playwright__browser_run_code",
+      "mcp__plugin_playwright_playwright__browser_evaluate",
+      "mcp__plugin_playwright_playwright__browser_resize",
+      "mcp__plugin_playwright_playwright__browser_console_messages",
+      "mcp__plugin_context7_context7__resolve-library-id",
+      "mcp__plugin_context7_context7__query-docs",
+      "mcp__pptx__create_presentation",
+      "mcp__pptx__set_slide_background",
+      "mcp__pptx__set_placeholder_text",
+      "mcp__pptx__add_slide",
+      "mcp__pptx__add_textbox",
+      "mcp__pptx__add_table",
+      "mcp__pptx__add_bullet_list",
+      "mcp__pptx__add_shape",
+      "mcp__pptx__save_presentation",
+      "mcp__pptx__close_presentation",
+      "mcp__pptx__list_slide_layouts",
+      "mcp__pptx__set_gradient_fill",
+      "mcp__pptx__modify_shape",
+      "mcp__pptx__add_chart",
+      "mcp__pptx__get_slide_info",
+      "mcp__pptx__add_presenter_notes",
+      "mcp__pptx__add_rich_textbox",
+      "mcp__pptx__format_table_cell",
+      "mcp__pptx__merge_table_cells",
+      "mcp__pptx__add_connector",
+      "mcp__pptx__delete_shape",
+      "mcp__pptx__get_presentation_info",
+      "mcp__xlsx__create_workbook",
+      "mcp__xlsx__open_workbook",
+      "mcp__xlsx__save_workbook",
+      "mcp__xlsx__close_workbook",
+      "mcp__xlsx__get_workbook_info",
+      "mcp__xlsx__add_sheet",
+      "mcp__xlsx__rename_sheet",
+      "mcp__xlsx__delete_sheet",
+      "mcp__xlsx__get_sheet_info",
+      "mcp__xlsx__read_range",
+      "mcp__xlsx__write_range",
+      "mcp__xlsx__write_cell",
+      "mcp__xlsx__clear_range",
+      "mcp__xlsx__find_replace",
+      "mcp__xlsx__format_range",
+      "mcp__xlsx__set_column_width",
+      "mcp__xlsx__set_row_height",
+      "mcp__xlsx__merge_cells",
+      "mcp__xlsx__add_borders",
+      "mcp__xlsx__create_table",
+      "mcp__xlsx__auto_filter",
+      "mcp__xlsx__sort_range",
+      "mcp__xlsx__add_chart",
+      "mcp__xlsx__modify_chart",
+      "mcp__xlsx__delete_chart",
+      "mcp__xlsx__insert_image",
+      "mcp__xlsx__freeze_panes",
+      "mcp__xlsx__page_setup",
+      "mcp__xlsx__apply_style_preset",
+      "mcp__xlsx__auto_fit_columns",
+      "mcp__xlsx__add_conditional_format",
+      "mcp__docx__create_document",
+      "mcp__docx__open_document",
+      "mcp__docx__save_document",
+      "mcp__docx__close_document",
+      "mcp__docx__get_document_info",
+      "mcp__docx__append_paragraph",
+      "mcp__docx__insert_paragraph",
+      "mcp__docx__append_heading",
+      "mcp__docx__append_page_break",
+      "mcp__docx__write_at_bookmark",
+      "mcp__docx__read_paragraphs",
+      "mcp__docx__find_text",
+      "mcp__docx__find_replace",
+      "mcp__docx__get_bookmarks",
+      "mcp__docx__add_table",
+      "mcp__docx__read_table",
+      "mcp__docx__write_table_cell",
+      "mcp__docx__format_table_cell",
+      "mcp__docx__merge_table_cells",
+      "mcp__docx__format_paragraph",
+      "mcp__docx__add_style",
+      "mcp__docx__apply_style",
+      "mcp__docx__insert_image",
+      "mcp__docx__insert_shape",
+      "mcp__docx__add_text_box",
+      "mcp__docx__page_setup",
+      "mcp__docx__add_section",
+      "mcp__docx__add_header_footer",
+      "mcp__docx__export_to_pdf",
+      "mcp__docx__get_statistics",
+      "mcp__plugin_playwright_playwright__browser_fill_form",
+      "mcp__plugin_playwright_playwright__browser_tabs",
+      "mcp__xlsx__read_cell_format",
+      "Bash([ ! -f \"$LOG\" ])",
+      "mcp__claude_ai_Canva__create-design-from-candidate",
+      "mcp__claude_ai_Canva__export-design",
+      "mcp__claude_ai_Canva__generate-design-structured"
+    ],
+    "deny": [
+      "Bash(powershell *)",
+      "Bash(cmd /c *)",
+      "Bash(chmod *)",
+      "Bash(iconv *)"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "pptx",
+    "xlsx",
+    "docx"
+  ],
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"C:\\Users\\lin46\\.conda\\envs\\ai-office\\python.exe\" \"D:\\ai-office\\shared\\tools\\session_start_hook.py\"",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"C:\\Users\\lin46\\.conda\\envs\\ai-office\\python.exe\" \"D:\\ai-office\\shared\\tools\\ingest_gate_hook.py\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"C:\\Users\\lin46\\.conda\\envs\\ai-office\\python.exe\" \"D:\\ai-office\\shared\\tools\\pretool_guard.py\"",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"C:\\Users\\lin46\\.conda\\envs\\ai-office\\python.exe\" \"D:\\ai-office\\shared\\tools\\skill_usage_tracker.py\"",
+            "timeout": 3
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"C:\\Users\\lin46\\.conda\\envs\\ai-office\\python.exe\" \"D:\\ai-office\\shared\\tools\\write_guard.py\"",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"C:\\Users\\lin46\\.conda\\envs\\ai-office\\python.exe\" \"D:\\ai-office\\shared\\workflows\\coordinator.py\" hook_stop",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"C:\\Users\\lin46\\.conda\\envs\\ai-office\\python.exe\" \"D:\\ai-office\\shared\\workflows\\coordinator.py\" hook_post",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"C:\\Users\\lin46\\.conda\\envs\\ai-office\\python.exe\" \"D:\\ai-office\\shared\\workflows\\coordinator.py\" hook_post",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

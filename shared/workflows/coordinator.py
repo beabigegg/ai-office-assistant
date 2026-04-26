@@ -160,6 +160,25 @@ def _format_sample_outputs(node: dict, project: str = "...") -> dict:
             "memory_conditions_met": True,
             "snapshot_path": "shared/kb/memory/YYYY-MM-DD.md",
             "snapshot_id": "YYYY-MM-DD",
+            "trigger_reasons": ["new_decisions"],
+            "trigger_evidence": {
+                "conversation_rounds": 12,
+                "files_written": ["projects/.../workspace/project_state.md"],
+                "db_schema_changed": False,
+                "db_paths": [],
+                "report_paths": [],
+            },
+        }
+    if node.get("id") == "sync_knowledge_index":
+        return {
+            "index_synced": True,
+            "exports_refreshed": True,
+        }
+    if node.get("id") == "check_promote_threshold":
+        return {
+            "active_high_count": 5,
+            "suggest_run_promote": True,
+            "reason": "active_high_count >= 5",
         }
     sample = {}
     required_outputs = node.get("required_outputs", [])

@@ -89,6 +89,16 @@ These are intended overlays, not future generic targets.
 
 ## Change Log
 
+- `2026-04-27`
+  - Hardened workflow guardrails so key validation paths fail closed instead of silently passing.
+  - Fixed validator runtime drift by removing bare-system-`python` subprocess calls in KB validators.
+  - Reworked `check_memory` to stop depending on machine-specific Claude project hashes and to require structured snapshot trigger evidence.
+  - Tightened `check_dynamic_kb_status` so it validates exact `kb_entry_ids` written this round instead of falling back to recent rows.
+  - Raised checklist enforcement from minimal-length-only responses to low-signal answer rejection.
+  - Made `knowledge_lifecycle` post-write sync/promote checks required and added validators for edge-queue clearing plus active-high promote thresholds.
+  - Added `skill_self_learning.select_candidate` validation and a write guard that blocks governed agent/skill definition writes during self-learning.
+  - Made `post_task.check_hygiene` required and updated coordinator sample outputs/tests to match the stricter workflow contracts.
+
 - `2026-04-25`
   - Renamed the company PPT overlay skill from `pptx-template` to `pptx-brand-master`.
   - Reframed company PPT generation around PANJIT brand-master rules instead of a fixed content template model.

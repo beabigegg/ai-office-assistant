@@ -3,7 +3,10 @@ Verifies D-NNN sequential numbering with no gaps.
 EVO-016: Reads from kb_index.db (source of truth) instead of decisions.md.
 """
 import json
+import os
 import re
+import subprocess
+import sys
 from pathlib import Path
 
 
@@ -97,23 +100,26 @@ def validate(context: dict) -> tuple:
     # Delegate validate/check-conflict to kb.py (EVO-016).
     # Keep validator side-effect free: exports/index generation belongs to refresh_kb_exports.
     try:
-        import subprocess
         kb_script = str(root / 'shared' / 'tools' / 'kb.py')
+        env = dict(os.environ, PYTHONIOENCODING='utf-8')
         val_result = subprocess.run(
-            ['python', kb_script, 'validate', '--quiet'],
+            [sys.executable, kb_script, 'validate', '--quiet'],
             capture_output=True, timeout=10, cwd=str(root),
-            encoding='utf-8', errors='replace'
+            encoding='utf-8', errors='replace', env=env
         )
         if val_result.returncode == 2:
             return False, f"KB consistency ERROR (must fix before proceeding): {val_result.stdout.strip()[:300]}"
         elif val_result.returncode == 1 and val_result.stdout.strip():
             message += f" | KB warnings: {val_result.stdout.strip()[:200]}"
+        elif val_result.returncode not in (0, 1, 2):
+            stderr = (val_result.stderr or '').strip()
+            return False, f"kb.py validate failed unexpectedly: {stderr[:200] or val_result.returncode}"
 
         for did, target_text in recorded_targets.items():
             conflict_result = subprocess.run(
-                ['python', kb_script, 'check-conflict', target_text, '--threshold', '0.5'],
+                [sys.executable, kb_script, 'check-conflict', target_text, '--threshold', '0.5'],
                 capture_output=True, timeout=10, cwd=str(root),
-                encoding='utf-8', errors='replace'
+                encoding='utf-8', errors='replace', env=env
             )
             if conflict_result.returncode == 1 and conflict_result.stdout.strip():
                 conflict_lines = [
@@ -121,8 +127,11 @@ def validate(context: dict) -> tuple:
                     if did not in line and line.strip().startswith(('D-', ' '))
                 ]
                 if conflict_lines:
-                    message += f" | L2-CONFLICT {did}: {'; '.join(l.strip() for l in conflict_lines[:3])}"
-    except Exception:
-        pass
+                    return False, f"L2-CONFLICT {did}: {'; '.join(l.strip() for l in conflict_lines[:3])}"
+            elif conflict_result.returncode not in (0, 1):
+                stderr = (conflict_result.stderr or '').strip()
+                return False, f"kb.py check-conflict failed for {did}: {stderr[:200] or conflict_result.returncode}"
+    except Exception as exc:
+        return False, f"decision validation subprocess failed: {exc}"
 
     return True, message

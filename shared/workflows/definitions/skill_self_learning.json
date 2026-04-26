@@ -13,7 +13,7 @@
         {"output_key": "suggested_skill"},
         {"output_key": "overlap_found"}
       ],
-      "validator": null,
+      "validator": "check_select_candidate",
       "validator_params": {}
     },
     {
@@ -30,7 +30,7 @@
     {
       "id": "run_skill_eval",
       "description": "執行 skill-eval-grader 評測擬議 Skill 草稿（若 prepare_eval_set 已 skipped 則跳過）",
-      "instruction": "If prepare_eval_set was skipped, complete with `{\"skipped\": true, \"pass_rate\": 0, \"reason\": \"overlap, no eval needed\"}`. Otherwise delegate to skill-eval-grader agent: provide the eval set path and the draft SKILL.md content (compose in memory, do NOT write it to disk). Complete with `{\"grading_json_path\": \"shared/workflows/state/grading_<learning_id>.json\", \"pass_rate\": <0.0-1.0>}`.",
+      "instruction": "If prepare_eval_set was skipped, complete with `{\"skipped\": true, \"pass_rate\": 0, \"reason\": \"overlap, no eval needed\"}`. Otherwise delegate to skill-eval-grader agent: provide the eval set path and the draft SKILL.md content (compose in memory, do NOT write it to disk). The write_guard hook blocks SKILL.md/.skill.yaml writes during skill_self_learning. Complete with `{\"grading_json_path\": \"shared/workflows/state/grading_<learning_id>.json\", \"pass_rate\": <0.0-1.0>}`.",
       "depends_on": ["prepare_eval_set"],
       "required": true,
       "delegate_to": "skill-eval-grader",

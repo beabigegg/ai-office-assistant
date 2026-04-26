@@ -43,11 +43,13 @@
     {
       "id": "check_memory_trigger",
       "description": "Evaluate memory snapshot conditions. Create snapshot if conditions met.",
-      "instruction": "Snapshot only if any condition is true: ≥3 files written, DB schema changed, report produced, ≥10 conversation rounds, or ≥2 new decisions. If triggered, write `shared/kb/memory/YYYY-MM-DD.md`, run `bash shared/tools/conda-python.sh shared/tools/kb.py import-snapshot shared/kb/memory/YYYY-MM-DD.md`, then complete with `{\"memory_conditions_met\":true,\"snapshot_path\":\"shared/kb/memory/YYYY-MM-DD.md\",\"snapshot_id\":\"YYYY-MM-DD\"}`. Do not complete this node with placeholder artifact outputs like `{\"file\":\"memory/\"}`; the required proof is the actual `snapshot_path` (and preferably `snapshot_id`). Otherwise complete with `{\"memory_conditions_met\":false}`.",
+      "instruction": "Snapshot only if any condition is true: ≥3 files written, DB schema changed, report produced, ≥10 conversation rounds, or ≥2 new decisions. If triggered, write `shared/kb/memory/YYYY-MM-DD.md`, run `bash shared/tools/conda-python.sh shared/tools/kb.py import-snapshot shared/kb/memory/YYYY-MM-DD.md`, then complete with `{\"memory_conditions_met\":true,\"snapshot_path\":\"shared/kb/memory/YYYY-MM-DD.md\",\"snapshot_id\":\"YYYY-MM-DD\",\"trigger_reasons\":[\"new_decisions\"],\"trigger_evidence\":{\"conversation_rounds\":12,\"files_written\":[\"...\"],\"db_schema_changed\":false,\"db_paths\":[],\"report_paths\":[]}}`. Use only these canonical trigger names: `files_written`, `db_schema_changed`, `report_produced`, `conversation_rounds`, `new_decisions`. Otherwise complete with `{\"memory_conditions_met\":false}`.",
       "depends_on": ["record_decisions", "record_knowledge"],
       "required": true,
       "required_outputs": [
-        {"path_contains": "memory/", "description": "memory snapshot if conditions met"}
+        {"path_contains": "memory/", "description": "memory snapshot if conditions met"},
+        {"output_key": "trigger_reasons", "description": "structured reasons for triggering the snapshot"},
+        {"output_key": "trigger_evidence", "description": "evidence supporting trigger_reasons"}
       ],
       "required_outputs_if": "memory_conditions_met",
       "validator": "check_memory",
@@ -58,7 +60,7 @@
       "description": "Verify workspace temp file count is within limits (zero-scatter rule). WARN at >5, FAIL at >15.",
       "instruction": "Scan for zero-scatter violations: (1) _tmp_*/tmp_*/test_output* files (WARN>5, FAIL>15); (2) files directly under projects/<name>/ not in workspace/ or vault/; (3) files under shared/ root; (4) *.backup.* or _backup/ dirs; (5) empty .gitkeep dirs >30 days old. Report count and paths. Clean up found violations.",
       "depends_on": ["update_project_state"],
-      "required": false,
+      "required": true,
       "required_outputs": [],
       "validator": "check_workspace_hygiene",
       "validator_params": {}

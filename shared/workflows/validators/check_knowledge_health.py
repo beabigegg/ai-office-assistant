@@ -5,7 +5,9 @@ Runs kb_index.py sync + validate at session start to surface:
 - L2: semantic overlaps among active decisions
 Reports issues as warnings (non-blocking) so the user is aware.
 """
+import os
 import subprocess
+import sys
 from pathlib import Path
 
 
@@ -15,19 +17,19 @@ def validate(context: dict) -> tuple:
     kb_script = str(root / 'shared' / 'tools' / 'kb.py')
 
     try:
-        env = dict(__import__('os').environ, PYTHONIOENCODING='utf-8')
+        env = dict(os.environ, PYTHONIOENCODING='utf-8')
 
         # Sync first (also triggers M1 auto-supersede)
         subprocess.run(
-            ['python', kb_script, 'sync', '--quiet'],
+            [sys.executable, kb_script, 'sync', '--quiet'],
             capture_output=True, timeout=15, cwd=str(root), env=env
         )
 
         # Validate (checks L2 fuzzy, L3 TTL, M1 consistency)
         result = subprocess.run(
-            ['python', kb_script, 'validate', '--quiet'],
+            [sys.executable, kb_script, 'validate', '--quiet'],
             capture_output=True, timeout=15, text=True, cwd=str(root),
-            encoding='utf-8', errors='replace'
+            encoding='utf-8', errors='replace', env=env
         )
 
         output = result.stdout.strip()

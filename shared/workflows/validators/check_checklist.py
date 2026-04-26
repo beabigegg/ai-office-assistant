@@ -23,7 +23,11 @@ except ImportError:
 ROOT = Path(__file__).resolve().parent.parent.parent.parent
 CHECKLISTS_DIR = ROOT / 'shared' / 'workflows' / 'checklists'
 
-MIN_ANSWER_LEN = 10
+MIN_ANSWER_LEN = 20
+LOW_SIGNAL_PATTERNS = [
+    re.compile(r"^(ok|okay|done|completed|checked|confirmed|noted|n/a|na|skip|skipped)\.?\s*$", re.IGNORECASE),
+    re.compile(r"^(ok|done|skipped)[\s,:;-]+", re.IGNORECASE),
+]
 
 
 def _normalize_responses(responses):
@@ -90,6 +94,16 @@ def _fallback_single_item_response(workflow_name, node_id, outputs, active_items
             return {item_id: summary}
 
     return {}
+
+
+def _is_low_signal_answer(answer: str) -> bool:
+    text = str(answer or "").strip()
+    if not text:
+        return True
+    for pattern in LOW_SIGNAL_PATTERNS:
+        if pattern.match(text):
+            return True
+    return False
 
 
 def _load_yaml(path):
@@ -161,6 +175,7 @@ def validate(context: dict) -> tuple:
 
     missing = []
     too_short = []
+    low_signal = []
     for item in active_items:
         item_id = item['id']
         answer = responses.get(item_id, "")
@@ -168,11 +183,15 @@ def validate(context: dict) -> tuple:
             missing.append(item_id)
         elif len(str(answer).strip()) < MIN_ANSWER_LEN:
             too_short.append(item_id)
+        elif _is_low_signal_answer(answer):
+            low_signal.append(item_id)
 
     if missing:
         return False, f"Checklist items not answered: {', '.join(missing)}"
     if too_short:
         return False, f"Checklist answers too short (<{MIN_ANSWER_LEN} chars): {', '.join(too_short)}"
+    if low_signal:
+        return False, f"Checklist answers too generic/low-signal: {', '.join(low_signal)}"
 
     # Evidence pattern check (R2: Harness Engineering)
     no_evidence = []

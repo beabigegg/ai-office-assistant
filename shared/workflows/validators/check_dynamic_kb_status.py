@@ -21,27 +21,32 @@ def validate(context: dict) -> tuple:
         requested_ids = context.get('outputs', {}).get('kb_entry_ids', [])
         if isinstance(requested_ids, str):
             requested_ids = [requested_ids]
+        requested_ids = [str(entry_id).strip() for entry_id in requested_ids if str(entry_id).strip()]
 
-        if requested_ids:
-            placeholders = ",".join("?" for _ in requested_ids)
-            rows = conn.execute(
-                f"SELECT id, target, status FROM nodes "
-                f"WHERE node_type='learning' AND id IN ({placeholders}) "
-                f"ORDER BY id DESC",
-                requested_ids,
-            ).fetchall()
-        else:
-            rows = conn.execute(
-                "SELECT id, target, status FROM nodes "
-                "WHERE node_type='learning' ORDER BY id DESC LIMIT 3"
-            ).fetchall()
+        if not requested_ids:
+            return False, "kb_entry_ids missing from outputs; validator must check exact DB rows written this round"
 
-        if not rows:
-            return True, "no learning entries in DB"
+        placeholders = ",".join("?" for _ in requested_ids)
+        rows = conn.execute(
+            f"SELECT id, node_type, target, status FROM nodes "
+            f"WHERE id IN ({placeholders}) "
+            f"ORDER BY id DESC",
+            requested_ids,
+        ).fetchall()
+
+        found_ids = {row["id"] for row in rows}
+        missing_ids = [entry_id for entry_id in requested_ids if entry_id not in found_ids]
+        if missing_ids:
+            return False, f"kb_entry_ids not found in DB: {', '.join(missing_ids)}"
+
+        learning_rows = [row for row in rows if row["node_type"] == "learning"]
+
+        if not learning_rows:
+            return True, "requested KB entries are decisions only; learning status check not applicable"
 
         valid_status = {'draft', 'active', 'mature', 'promoted', 'stale', 'archived'}
         missing = []
-        for r in rows:
+        for r in learning_rows:
             status = (r['status'] or '').strip().lower()
             if status not in valid_status:
                 label = (r['target'] or r['id'])[:40]
@@ -53,7 +58,6 @@ def validate(context: dict) -> tuple:
                 f"{'; '.join(missing)}. Fix via kb.py update <ID> --status <allowed-learning-status>."
             )
 
-        scope = "requested" if requested_ids else "recent"
-        return True, f"M2: {scope} learning entries have valid status"
+        return True, "M2: requested learning entries have valid status"
     finally:
         conn.close()
