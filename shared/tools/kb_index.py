@@ -1161,12 +1161,13 @@ class KBIndex:
         else:
             output_path = Path(output_path)
 
-        # Fetch active decisions
+        # Fetch active decisions. Project scope must match both locally-owned
+        # decisions and cross-project decisions that explicitly affect this project.
         sql = "SELECT * FROM nodes WHERE status='active' AND node_type='decision'"
         params = []
         if project:
-            sql += " AND project LIKE ?"
-            params.append(f"%{project}%")
+            sql += " AND (project = ? OR affects_project LIKE ?)"
+            params.extend([project, f"%{project}%"])
         sql += " ORDER BY id"
         decisions = self.conn.execute(sql, params).fetchall()
 

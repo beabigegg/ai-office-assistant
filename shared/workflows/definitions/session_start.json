@@ -16,13 +16,16 @@
     },
     {
       "id": "load_active_context",
-      "description": "LAZY: Do NOT preload active_rules_summary.md at startup. Instead use kb_index.py related/impacts on demand during work. This saves ~22KB (~7K tokens) per session.",
-      "instruction": "Skip — do NOT preload active_rules_summary.md. Use kb.py search on demand during work instead.",
+      "description": "Generate fresh project-scoped active_rules_summary, then Read it so the active D-NNN ruleset is in context for this session. Cost: ~3K tokens; benefit: prevents Tier-3 rewrites from drifting away from active decisions.",
+      "instruction": "(1) Run: bash shared/tools/conda-python.sh shared/tools/kb.py generate-summary --project {PROJECT_ID} --output projects/{PROJECT_ID}/workspace/.active_rules_summary.md  (2) Read projects/{PROJECT_ID}/workspace/.active_rules_summary.md  (3) Count active decisions in the file (D-NNN occurrences) and report to user as 'N active decisions loaded'. Complete with {\"summary_path\":\"projects/{PROJECT_ID}/workspace/.active_rules_summary.md\",\"active_decision_count\":N}.",
       "depends_on": ["read_project_state"],
-      "required": false,
-      "required_outputs": [],
-      "validator": null,
-      "validator_params": {}
+      "required": true,
+      "required_outputs": [
+        {"output_key": "summary_path", "description": "path to generated active_rules_summary"},
+        {"output_key": "active_decision_count", "description": "number of active D-NNN entries loaded"}
+      ],
+      "validator": "check_active_rules_loaded",
+      "validator_params": {"max_age_seconds": 600}
     },
     {
       "id": "load_project_backlog",
@@ -57,21 +60,44 @@
     {
       "id": "flag_open_questions",
       "description": "Identify and flag open questions from project_state.md",
-      "instruction": "Read '## 未解問題' section from project_state.md. If project_management type, also run: bash shared/tools/conda-python.sh shared/tools/backlog.py --project {PROJECT_ID} list --status blocked. List all open questions clearly.",
+      "instruction": "Read '## 未解問題' section from project_state.md. If project_management type, also run: bash shared/tools/conda-python.sh shared/tools/backlog.py --project {PROJECT_ID} list --status blocked. Count unresolved items and summarize them explicitly. Complete with {\"open_question_count\":N,\"open_questions_summary\":\"...\"}. If none, use count 0 and summary '(none)'.",
       "depends_on": ["read_project_state"],
-      "required": false,
-      "required_outputs": [],
-      "validator": null,
+      "required": true,
+      "required_outputs": [
+        {"output_key": "open_question_count", "description": "number of open questions loaded"},
+        {"output_key": "open_questions_summary", "description": "summary of open questions or explicit none marker"}
+      ],
+      "validator": "check_open_questions_loaded",
       "validator_params": {}
+    },
+    {
+      "id": "build_session_context",
+      "description": "Generate a project-scoped session context bundle that combines active decisions, recent learnings, and open questions for this session.",
+      "instruction": "(1) Run: bash shared/tools/conda-python.sh shared/tools/kb.py generate-session-context --project {PROJECT_ID} --output projects/{PROJECT_ID}/workspace/.session_context_bundle.md (2) Read the generated bundle (3) Report its counts to user. Complete with {\"bundle_path\":\"projects/{PROJECT_ID}/workspace/.session_context_bundle.md\",\"bundle_decision_count\":N,\"bundle_learning_count\":M,\"bundle_open_question_count\":Q}.",
+      "depends_on": ["load_active_context", "flag_open_questions"],
+      "required": true,
+      "required_outputs": [
+        {"output_key": "bundle_path", "description": "path to generated session context bundle"},
+        {"output_key": "bundle_decision_count", "description": "number of active decisions in bundle"},
+        {"output_key": "bundle_learning_count", "description": "number of recent learnings in bundle"},
+        {"output_key": "bundle_open_question_count", "description": "number of open questions in bundle"}
+      ],
+      "validator": "check_session_context_bundle",
+      "validator_params": {"max_age_seconds": 600}
     },
     {
       "id": "report_ready",
       "description": "Report session ready status to user with context summary",
-      "instruction": "Report in 3-5 bullet points: project type + {PROJECT_ID}, 當前階段, active task count, open question count, KB health status, DB status. End with: 就緒，等待指示。",
-      "depends_on": ["read_project_state"],
+      "instruction": "Report in 3-5 bullet points: project type + {PROJECT_ID}, 當前階段, active decision count, open question count, KB health status, DB status. If open questions exist, explicitly surface them as risk. End with: 就緒，等待指示。 Complete with {\"ready_summary\":\"...\",\"risk_status\":\"clear|open_questions|mixed\",\"context_bundle_path\":\"projects/{PROJECT_ID}/workspace/.session_context_bundle.md\",\"reported_open_question_count\":Q}.",
+      "depends_on": ["build_session_context"],
       "required": true,
-      "required_outputs": [],
-      "validator": null,
+      "required_outputs": [
+        {"output_key": "ready_summary", "description": "session-ready summary delivered to user"},
+        {"output_key": "risk_status", "description": "clear|open_questions|mixed"},
+        {"output_key": "context_bundle_path", "description": "bundle path echoed in ready report"},
+        {"output_key": "reported_open_question_count", "description": "open question count surfaced in ready report"}
+      ],
+      "validator": "check_ready_context",
       "validator_params": {}
     }
   ]

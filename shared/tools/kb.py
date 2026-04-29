@@ -79,6 +79,51 @@ def _normalize_learning_confidence(raw_confidence: str) -> str:
         return "medium"
     return "low"
 
+
+def _project_scope_clause(project: str | None, alias: str = "") -> tuple[str, tuple]:
+    """Return SQL clause + params for canonical project/affects_project scope."""
+    project = _normalize_kb_project(project)
+    if not project:
+        return "", ()
+    prefix = f"{alias}." if alias else ""
+    clause = f" AND ({prefix}project = ? OR {prefix}affects_project LIKE ?)"
+    return clause, (project, f"%{project}%")
+
+
+def _extract_markdown_section(text: str, heading: str) -> str:
+    pattern = rf"{re.escape(heading)}\n(.*?)(?=\n## |\Z)"
+    match = re.search(pattern, text, re.DOTALL)
+    return match.group(1).strip() if match else ""
+
+
+def _parse_open_question_lines(text: str) -> list[str]:
+    block = _extract_markdown_section(text, "## 未解問題")
+    if not block:
+        return []
+    lines = []
+    for raw_line in block.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("<!--"):
+            continue
+        if "（無）" in line or line.lower() in {"none", "(none)"}:
+            return []
+        if re.match(r"^[-*]\s+", line):
+            lines.append(re.sub(r"^[-*]\s+", "", line))
+            continue
+        if re.match(r"^\d+\.\s+", line):
+            lines.append(re.sub(r"^\d+\.\s+", "", line))
+            continue
+        lines.append(line)
+    return lines
+
+
+def _project_state_path(project: str) -> Path:
+    return ROOT / "projects" / project / "workspace" / "project_state.md"
+
+
+def _extract_referenced_decision_ids(text: str) -> list[str]:
+    return list(dict.fromkeys(re.findall(r"\bD-\d{3}\b", text or "")))
+
 def _get_embedding_utils():
     global _embedding_utils
     if _embedding_utils is None:
@@ -315,36 +360,61 @@ def cmd_catalog(args):
     conn = _get_conn()
     _ensure_schema(conn)
 
-    rows = conn.execute("""
+    project_filter = getattr(args, 'project', None)
+    if project_filter:
+        # Project-scoped catalog: filter all node-level queries by project.
+        # affects_project is JSON-array-ish, so use LIKE for that column.
+        proj_clause = "AND (project = ? OR affects_project LIKE ?)"
+        proj_params = (project_filter, f"%{project_filter}%")
+    else:
+        proj_clause = ""
+        proj_params = ()
+
+    rows = conn.execute(f"""
         SELECT node_type,
                COUNT(*) AS total,
                SUM(CASE WHEN status='active' THEN 1 ELSE 0 END) AS active,
                SUM(CASE WHEN status='superseded' THEN 1 ELSE 0 END) AS superseded,
                MAX(created_date) AS latest
-        FROM nodes GROUP BY node_type ORDER BY node_type
-    """).fetchall()
+        FROM nodes
+        WHERE 1=1 {proj_clause}
+        GROUP BY node_type ORDER BY node_type
+    """, proj_params).fetchall()
 
-    with_content = conn.execute("SELECT COUNT(*) FROM nodes WHERE content IS NOT NULL AND content != ''").fetchone()[0]
-    total_nodes = conn.execute("SELECT COUNT(*) FROM nodes").fetchone()[0]
-    embedded = conn.execute("SELECT COUNT(*) FROM node_embeddings").fetchone()[0]
+    with_content = conn.execute(
+        f"SELECT COUNT(*) FROM nodes WHERE content IS NOT NULL AND content != '' {proj_clause}",
+        proj_params
+    ).fetchone()[0]
+    total_nodes = conn.execute(
+        f"SELECT COUNT(*) FROM nodes WHERE 1=1 {proj_clause}",
+        proj_params
+    ).fetchone()[0]
+    if project_filter:
+        embedded = conn.execute(f"""
+            SELECT COUNT(*) FROM node_embeddings ne
+            JOIN nodes n ON ne.node_id = n.id
+            WHERE 1=1 {proj_clause.replace('project = ?', 'n.project = ?').replace('affects_project', 'n.affects_project')}
+        """, proj_params).fetchone()[0]
+    else:
+        embedded = conn.execute("SELECT COUNT(*) FROM node_embeddings").fetchone()[0]
 
-    proj_rows = conn.execute("""
+    proj_rows = conn.execute(f"""
         SELECT project, COUNT(*) AS cnt FROM nodes
-        WHERE status='active' AND project IS NOT NULL
+        WHERE status='active' AND project IS NOT NULL {proj_clause}
         GROUP BY project ORDER BY cnt DESC
-    """).fetchall()
+    """, proj_params).fetchall()
 
     week_ago = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')
     recent = conn.execute(
-        "SELECT id FROM nodes WHERE created_date >= ? ORDER BY created_date DESC, id DESC LIMIT 10",
-        (week_ago,)
+        f"SELECT id FROM nodes WHERE created_date >= ? {proj_clause} ORDER BY created_date DESC, id DESC LIMIT 10",
+        (week_ago, *proj_params)
     ).fetchall()
 
     today_str = datetime.now().strftime('%Y-%m-%d')
-    expired_rows = conn.execute("""
+    expired_rows = conn.execute(f"""
         SELECT id, meta_json FROM nodes
-        WHERE status='active' AND meta_json IS NOT NULL AND meta_json LIKE '%review_by%'
-    """).fetchall()
+        WHERE status='active' AND meta_json IS NOT NULL AND meta_json LIKE '%review_by%' {proj_clause}
+    """, proj_params).fetchall()
     expired_ids = []
     for e in expired_rows:
         try:
@@ -356,6 +426,8 @@ def cmd_catalog(args):
             pass
 
     print("=== Knowledge Base Catalog ===")
+    if project_filter:
+        print(f"Project filter: {project_filter}")
     sync_time = conn.execute('SELECT MAX(synced_at) FROM sync_log').fetchone()[0] or 'never'
     print(f"Last sync: {sync_time}")
     print()
@@ -443,13 +515,14 @@ def _semantic_neighbors(conn, node_id: str, top: int = 8) -> list:
 # search
 # ═══════════════════════════════════════════════════════════
 
-def _vec_cosine_fallback(conn, eu, query_emb, top, lines):
+def _vec_cosine_fallback(conn, eu, query_emb, top, lines, project: str = ""):
     """Legacy full-scan cosine search (used when sqlite-vec is unavailable)."""
-    all_embs = conn.execute("""
+    proj_clause, proj_params = _project_scope_clause(project, alias="n")
+    all_embs = conn.execute(f"""
         SELECT ne.node_id, ne.embedding, n.node_type, n.status, n.target, n.summary, n.created_date
         FROM node_embeddings ne JOIN nodes n ON ne.node_id = n.id
-        WHERE n.status = 'active'
-    """).fetchall()
+        WHERE n.status = 'active' {proj_clause}
+    """, proj_params).fetchall()
     results = []
     for row in all_embs:
         emb = eu['blob_to_embedding'](row['embedding'])
@@ -480,6 +553,7 @@ def cmd_search(args):
 
     if args.keyword:
         pattern = f"%{query}%"
+        proj_clause, proj_params = _project_scope_clause(project)
         sql = """
             SELECT id, node_type, status, target, summary, created_date
             FROM nodes
@@ -487,9 +561,9 @@ def cmd_search(args):
               AND status = 'active'
         """
         params = [pattern, pattern, pattern]
-        if project:
-            sql += " AND project = ?"
-            params.append(project)
+        if proj_clause:
+            sql += proj_clause
+            params.extend(proj_params)
         sql += " ORDER BY created_date DESC LIMIT ?"
         params.append(top)
         rows = conn.execute(sql, params).fetchall()
@@ -518,17 +592,18 @@ def cmd_search(args):
         if _VEC_AVAILABLE:
             _ensure_vec_table(conn)
             try:
-                vec_rows = conn.execute("""
+                proj_clause, proj_params = _project_scope_clause(project, alias="n")
+                vec_rows = conn.execute(f"""
                     SELECT v.node_id, v.distance,
                            n.node_type, n.status, n.target, n.summary, n.created_date
                     FROM node_vec v
                     JOIN nodes n ON v.node_id = n.id
                     WHERE n.status = 'active'
-                      AND (? = '' OR n.project = ?)
+                      {proj_clause}
                       AND v.embedding MATCH ?
                       AND k = ?
                     ORDER BY v.distance
-                """, (project, project, query_blob, top)).fetchall()
+                """, (*proj_params, query_blob, top)).fetchall()
                 for row in vec_rows:
                     # sqlite-vec returns L2 distance; convert to approx similarity for display
                     sim = max(0.0, 1.0 - row['distance'])
@@ -537,9 +612,9 @@ def cmd_search(args):
                     lines.append(f"{row['node_id']:<10} | sim={sim:.3f} | {row['target'][:60]}{skill_tag}")
             except Exception as vec_err:
                 print(f"sqlite-vec search failed ({vec_err}), falling back to cosine", file=sys.stderr)
-                _vec_cosine_fallback(conn, eu, query_emb, top, lines)
+                _vec_cosine_fallback(conn, eu, query_emb, top, lines, project=project)
         else:
-            _vec_cosine_fallback(conn, eu, query_emb, top, lines)
+            _vec_cosine_fallback(conn, eu, query_emb, top, lines, project=project)
 
     if include_snapshots:
         snap_rows = _search_snapshots_fts(conn, query, top)
@@ -1147,7 +1222,11 @@ def cmd_impacts(args):
         conditions.append("refs_skill LIKE ?")
         params.append(f"%{args.skill}%")
     if args.project:
-        conditions.append("affects_project LIKE ?")
+        # A node belongs to a project either via its own project column
+        # (where it was created) or via affects_project (cross-project impact).
+        # Earlier versions only checked affects_project, missing all locally-scoped rows.
+        conditions.append("(project = ? OR affects_project LIKE ?)")
+        params.append(args.project)
         params.append(f"%{args.project}%")
 
     if not conditions:
@@ -1975,6 +2054,186 @@ def cmd_generate_summary(args):
         kb.close()
 
 
+def cmd_generate_session_context(args):
+    """Generate a project-scoped session context bundle for agent startup."""
+    project = _normalize_kb_project(getattr(args, "project", None))
+    if not project:
+        print("ERROR: --project is required", file=sys.stderr)
+        sys.exit(1)
+    max_decisions = max(1, int(getattr(args, "max_decisions", 24) or 24))
+
+    output_path = getattr(args, "output", None)
+    if output_path:
+        output_path = Path(output_path)
+        if not output_path.is_absolute():
+            output_path = ROOT / output_path
+    else:
+        output_path = ROOT / "projects" / project / "workspace" / ".session_context_bundle.md"
+
+    project_state_path = _project_state_path(project)
+    if not project_state_path.exists():
+        print(f"ERROR: project_state.md not found: {project_state_path}", file=sys.stderr)
+        sys.exit(1)
+
+    project_state_text = project_state_path.read_text(encoding="utf-8")
+    phase_block = _extract_markdown_section(project_state_text, "## 當前階段")
+    open_questions = _parse_open_question_lines(project_state_text)
+    knowledge_deps_block = _extract_markdown_section(project_state_text, "## 活躍知識依賴")
+    pinned_decision_ids = _extract_referenced_decision_ids(knowledge_deps_block)
+
+    conn = _get_conn()
+    _ensure_schema(conn)
+    try:
+        proj_clause, proj_params = _project_scope_clause(project)
+        all_decision_rows = conn.execute(f"""
+            SELECT id, project, target, summary, refs_skill, refs_db, affects_project
+            FROM nodes
+            WHERE status='active' AND node_type='decision' {proj_clause}
+            ORDER BY id
+        """, proj_params).fetchall()
+        decision_by_id = {row["id"]: row for row in all_decision_rows}
+
+        recent_rows = conn.execute(f"""
+            SELECT id, project, target, summary, refs_skill, refs_db, affects_project
+            FROM nodes
+            WHERE status='active' AND node_type='decision' {proj_clause}
+            ORDER BY created_date DESC, id DESC
+            LIMIT ?
+        """, (*proj_params, max_decisions)).fetchall()
+
+        selected_ids = []
+        for did in pinned_decision_ids:
+            if did in decision_by_id and did not in selected_ids:
+                selected_ids.append(did)
+        for row in recent_rows:
+            did = row["id"]
+            if did not in selected_ids:
+                selected_ids.append(did)
+            if len(selected_ids) >= max_decisions:
+                break
+        decision_rows = [decision_by_id[did] for did in selected_ids if did in decision_by_id]
+
+        decision_ids = [row["id"] for row in decision_rows]
+        decision_placeholders = ",".join("?" for _ in decision_ids)
+        learning_sql = """
+            SELECT DISTINCT n.id, n.project, n.target, n.summary, n.created_date, n.meta_json
+            FROM nodes n
+            LEFT JOIN edges e ON e.source_id = n.id AND e.relation = 'references'
+            WHERE n.node_type='learning'
+              AND n.status IN ('active', 'mature', 'promoted')
+              AND (
+                n.project = ?
+        """
+        learning_params = [project]
+        if decision_ids:
+            learning_sql += f" OR e.target_id IN ({decision_placeholders})"
+            learning_params.extend(decision_ids)
+        learning_sql += """
+              )
+            ORDER BY n.created_date DESC, n.id DESC
+            LIMIT 12
+        """
+        learning_rows = conn.execute(learning_sql, learning_params).fetchall()
+
+        rule_rows = conn.execute("""
+            SELECT id, summary
+            FROM nodes
+            WHERE status='active' AND node_type='rule'
+            ORDER BY id
+        """).fetchall()
+    finally:
+        conn.close()
+
+    lines = [
+        "# Session Context Bundle",
+        "",
+        f"> Auto-generated by kb.py on {datetime.now().strftime('%Y-%m-%d %H:%M')}",
+        f"> Project: {project}",
+        f"> Source state: {project_state_path.relative_to(ROOT)}",
+        "",
+        "## Current Phase",
+        "",
+        phase_block or "(not found)",
+        "",
+        "## Active Decisions",
+        "",
+        (
+            "Loaded separately via `.active_rules_summary.md`; "
+            f"focused subset only ({len(decision_rows)} shown / {len(all_decision_rows)} project-scoped active)."
+        ),
+        "",
+    ]
+
+    if decision_rows:
+        for row in decision_rows:
+            refs = []
+            for label, raw in (("skill", row["refs_skill"]), ("db", row["refs_db"])):
+                if not raw:
+                    continue
+                try:
+                    values = [str(v).strip() for v in json.loads(raw) if str(v).strip()]
+                except (json.JSONDecodeError, TypeError):
+                    values = []
+                if values:
+                    refs.append(f"{label}:{','.join(values)}")
+            affects = []
+            if row["affects_project"]:
+                try:
+                    affects = [str(v).strip() for v in json.loads(row["affects_project"]) if str(v).strip()]
+                except (json.JSONDecodeError, TypeError):
+                    affects = []
+            suffix_parts = []
+            if refs:
+                suffix_parts.append("; ".join(refs))
+            if affects:
+                suffix_parts.append(f"affects:{','.join(affects)}")
+            suffix = f" [{' | '.join(suffix_parts)}]" if suffix_parts else ""
+            target = (row["target"] or "")[:100]
+            lines.append(f"- **{row['id']}** ({row['project'] or 'general'}): {target}{suffix}")
+    else:
+        lines.append("(none)")
+
+    lines.extend(["", "## Recent Learnings", ""])
+    if learning_rows:
+        for row in learning_rows:
+            confidence = "unknown"
+            if row["meta_json"]:
+                try:
+                    confidence = json.loads(row["meta_json"]).get("confidence", "unknown")
+                except (json.JSONDecodeError, TypeError, AttributeError):
+                    pass
+            lines.append(
+                f"- **{row['id']}** ({row['project'] or 'general'}, {row['created_date']}, confidence={confidence}): {row['target']}"
+            )
+            if row["summary"]:
+                lines.append(f"  - {row['summary']}")
+    else:
+        lines.append("(none)")
+
+    lines.extend(["", "## Open Questions", ""])
+    if open_questions:
+        for question in open_questions:
+            lines.append(f"- {question}")
+    else:
+        lines.append("(none)")
+
+    lines.extend(["", "## Active Rules", ""])
+    if rule_rows:
+        for row in rule_rows:
+            lines.append(f"- **{row['id']}**: {row['summary'][:120] if row['summary'] else ''}")
+    else:
+        lines.append("(none)")
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    print(f"Generated: {output_path}")
+    print(f"  Active decisions: {len(decision_rows)}")
+    print(f"  Recent learnings: {len(learning_rows)}")
+    print(f"  Open questions: {len(open_questions)}")
+    print(f"  Active rules: {len(rule_rows)}")
+
+
 def cmd_generate_index(args):
     """Generate shared/kb/_index.md (EVO-016)."""
     KBIndex = _get_kb_index()
@@ -2016,7 +2275,9 @@ def main():
     parser = argparse.ArgumentParser(description="Knowledge Base CLI (EVO-012, EVO-016)")
     sub = parser.add_subparsers(dest='command')
 
-    sub.add_parser('catalog', help='Lightweight KB summary')
+    p_cat = sub.add_parser('catalog', help='Lightweight KB summary')
+    p_cat.add_argument('--project', type=str, default=None,
+                       help='Limit catalog counts to a project scope (matches project= or affects_project LIKE).')
     sub.add_parser('next-id', help='Next available D-NNN')
 
     p_search = sub.add_parser('search', help='Search knowledge base')
@@ -2149,6 +2410,11 @@ def main():
     p_gs.add_argument('--project', type=str, default=None)
     p_gs.add_argument('--output', type=str, default=None)
 
+    p_gsc = sub.add_parser('generate-session-context', help='Generate project-scoped session context bundle')
+    p_gsc.add_argument('--project', type=str, required=True)
+    p_gsc.add_argument('--output', type=str, default=None)
+    p_gsc.add_argument('--max-decisions', type=int, default=24)
+
     p_gi = sub.add_parser('generate-index', help='Generate shared/kb/_index.md (EVO-016)')
     p_gi.add_argument('--output', type=str, default=None)
 
@@ -2178,6 +2444,7 @@ def main():
         # EVO-016: absorbed from kb_index.py
         'sync': cmd_sync,
         'generate-summary': cmd_generate_summary,
+        'generate-session-context': cmd_generate_session_context,
         'generate-index': cmd_generate_index,
         'check-conflict': cmd_check_conflict,
     }

@@ -92,7 +92,8 @@ shared/kb/{dynamic,external,memory}/    ← 匯出品 / 外部標準摘要 / 會
 - **冪等 + 追溯**：DB 寫入帶 `_operation_id/_source_file/_source_version/_source_row`（ingest-* agent 內建）
 - **Stop hook**：post_task required 節點未完成不得結束對話
 - **Skill-First**：新需求先問「有沒有 Skill 或 `shared/tools/` 工具可完成？」。有則用，無則評估是否補建 Skill/工具。**禁止**為單次需求在 `projects/*/scripts/` 建立一次性腳本；若確實需要專案腳本，必須說明為何不可複用。
-- **Architect-Only Lifecycle**：新 agent / skill 的建立、改名、拆分、整併、退休，一律先交 `architect`。只有在 `AGENT_SKILL_GOVERNANCE.md` 的觸發條件成立後，才可新增 agent/skill。
+- **Architect-Only Lifecycle**：新 agent / skill 的建立、改名、拆分、整併、退休，一律先交 `architect`。只有在既有治理基線與明確觸發條件成立後，才可新增 agent/skill。
+- **Tier-3 重寫三步驟**：重寫任何 `projects/*/scripts/*.py`（>100 行或替換既有邏輯）前，必須：(1) `bash shared/tools/conda-python.sh shared/tools/kb.py catalog --project {PROJECT_ID}` 取得 active decisions 清單；(2) 新檔頂端 docstring 明列將遵循的 D-NNN；(3) active 清單中未列入 (2) 的 decision，須在 docstring 明示「不適用」並說明理由。
 
 ---
 
