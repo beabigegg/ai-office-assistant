@@ -17,4 +17,4 @@
 - provider_guidance:
   - AGENTS.md
   - .claude/CLAUDE.md
-  - CODEX.template.md
+  - CODEX.md

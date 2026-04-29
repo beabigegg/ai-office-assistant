@@ -412,7 +412,7 @@ TEMPLATES[".aok/kit-profile.md"] = """\
 - provider_guidance:
   - AGENTS.md
   - .claude/CLAUDE.md
-  - CODEX.template.md
+  - CODEX.md
 """
 
 TEMPLATES[".aok/runtime-contracts.md"] = """\
@@ -435,6 +435,44 @@ TEMPLATES[".aok/runtime-contracts.md"] = """\
 
 - Unknown / unresolved / blocked items must be surfaced in project state or workflow outputs
 - Session ready status cannot hide open questions behind a clear state
+"""
+
+TEMPLATES["AGENTS.md"] = """\
+# AGENTS
+
+This file is the host-agent operating contract for work done inside this `ai-office` repository.
+
+It is not the runtime source of truth for deployed projects. Runtime authority stays in `.aok/runtime-contracts.md`, `shared/workflows/definitions/`, validators, and `shared/kb/knowledge_graph/kb_index.db`.
+
+## Default Role
+
+Unless the user explicitly redirects the task, operate as the `architect` agent and optimize the kit itself:
+
+- preserve provider-neutral runtime behavior
+- improve memory loading, writeback, and uncertainty handling
+- keep Claude Code CLI and Codex CLI surfaces aligned
+- split framework-generic assets from internal overlays
+- avoid ad-hoc agent/skill sprawl
+"""
+
+TEMPLATES["CODEX.md"] = """\
+# CODEX.md
+
+This repository uses the AI-OFFICE-kit runtime model for Codex CLI.
+
+## Load Order
+
+1. `AGENTS.md`
+2. `.aok/runtime-contracts.md`
+3. `shared/workflows/definitions/`
+4. provider-specific details in this file
+
+## Required Behavior
+
+- Restore project context through the session-start workflow before non-trivial project work.
+- Treat `shared/kb/knowledge_graph/kb_index.db` as the memory authority.
+- Treat `projects/<PROJECT_ID>/workspace/project_state.md` as the hot project surface.
+- Surface open questions explicitly instead of proceeding as if the context were complete.
 """
 
 # --- Skill 範本 ---

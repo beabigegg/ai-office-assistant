@@ -25,7 +25,7 @@ DOC_PATHS = [
     ROOT / "README.md",
     ROOT / "LOCAL_INTERNAL_SETUP.md",
     ROOT / "AGENTS.md",
-    ROOT / "AGENT_SKILL_GOVERNANCE.md",
+    ROOT / "CODEX.md",
     ROOT / "SETUP.md",
     CLAUDE_DIR / "CLAUDE.md",
 ]
@@ -39,7 +39,7 @@ EXTENDED_SCAN_FILES = [
     ROOT / "SETUP.md",
     ROOT / "LOCAL_INTERNAL_SETUP.md",
     ROOT / "AGENTS.md",
-    ROOT / "AGENT_SKILL_GOVERNANCE.md",
+    ROOT / "CODEX.md",
     CLAUDE_DIR / "CLAUDE.md",
     ROOT / "shared" / "protocols" / "skill_manifest_spec.md",
     ROOT / "shared" / "tools" / "TOOL_LINEAGE.md",
@@ -55,7 +55,6 @@ EXTENDED_SCAN_GLOBS = [
 # Paths allowed to still mention the legacy '.claude/skills/' directory for
 # historic / compat reasons. Keep this set minimal.
 LEGACY_SKILLS_PATH_ALLOWED = {
-    ROOT / "AGENT_SKILL_GOVERNANCE.md",  # may reference historic layout in change logs
     CLAUDE_DIR / "agent-memory" / "architect" / "MEMORY.md",
 }
 
@@ -71,8 +70,8 @@ PYTHON_CONTRACT_ALLOWED = {
 # documentation, not violations. Keep minimal and review when editing.
 META_PROHIBITION_DOCS = {
     ROOT / "AGENTS.md",
+    ROOT / "CODEX.md",
     CLAUDE_DIR / "CLAUDE.md",
-    ROOT / "AGENT_SKILL_GOVERNANCE.md",
 }
 
 FORBIDDEN_WORKFLOW_DELEGATES = {
@@ -85,7 +84,7 @@ STALE_ALIASES = {
 }
 RELIABILITY_COMPAT_ALLOWED_PATHS = {
     ROOT / "AGENTS.md",
-    ROOT / "AGENT_SKILL_GOVERNANCE.md",
+    ROOT / "CODEX.md",
     ROOT / "LOCAL_INTERNAL_SETUP.md",
     CLAUDE_DIR / "agent-memory" / "architect" / "MEMORY.md",
     CLAUDE_DIR / "skills-on-demand" / "reliability-testing" / "SKILL.md",

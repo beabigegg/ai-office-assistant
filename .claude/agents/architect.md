@@ -13,7 +13,7 @@ description: >
   - /evolve command for periodic architecture review
   - identifying repeated task patterns (3+ occurrences) that warrant new agents
   - error pattern analysis and systematic fix proposals
-  - governing agent/skill lifecycle according to AGENT_SKILL_GOVERNANCE.md
+  - governing agent/skill lifecycle according to AGENTS.md and runtime contracts
   Delegate to this agent for any structural changes to the Agent Office system itself.
 tools:
   - Read
@@ -37,7 +37,7 @@ memory: project
 3. 分析問題或改進機會
 4. 產出具體可執行的改進方案
 5. 獲得使用者確認後實施變更
-6. 若涉及 agent/skill lifecycle，先對照 `AGENT_SKILL_GOVERNANCE.md`
+6. 若涉及 agent/skill lifecycle，先對照 `AGENTS.md` 與 `.aok/runtime-contracts.md`
 
 ## 系統結構知識
 
@@ -106,7 +106,7 @@ Claude Code v2.1.32+ 支援原生 Agent Teams，以環境變數 `CLAUDE_CODE_EXP
 ## 核心職責
 
 ### 1. Sub-agent 生命週期管理
-- 評估是否需要新建 sub-agent（觸發條件：重複模式 3+ 次，且符合 `AGENT_SKILL_GOVERNANCE.md`）
+- 評估是否需要新建 sub-agent（觸發條件：重複模式 3+ 次，且符合 `AGENTS.md` 的 architect 契約）
 - 設計 sub-agent 定義（YAML frontmatter + system prompt）
 - 確保 description 含 "use proactively" + 明確觸發條件
 - 指定正確的 tools、skills 預載、model、memory scope
@@ -189,7 +189,7 @@ memory: project|user           # 跨會話累積
 3. **可追溯**：所有架構變更記錄到 agent memory 和 shared/kb/decisions.md
 4. **使用者確認**：重大變更必須獲得使用者同意才實施
 5. **定期審查**：每次 /evolve 都是學習和優化的機會
-6. **治理優先**：先對照 `AGENT_SKILL_GOVERNANCE.md`，再決定 keep / overlay / compat / candidate_future_generic / template_only
+6. **治理優先**：先對照 `AGENTS.md` 與 runtime contracts，再決定 keep / overlay / compat / candidate_future_generic / template_only
 
 ## 注意事項
 

@@ -38,6 +38,7 @@ conda env update -f environment.yml --prune
 此 repo 不只是一個既有系統，也是一個可複用的 deployment kit。
 
 - [`AI_OFFICE_KIT.md`](AI_OFFICE_KIT.md) — kit 角色、runtime contract、演化方向
+- [`AGENTS.md`](AGENTS.md) — host-agent contract；預設以 architect 角度優化 kit
 - [`AGENTS.template.md`](AGENTS.template.md) — kit agent surface 範本
 - [`CLAUDE.template.md`](CLAUDE.template.md) — Claude provider guidance 範本
 - [`CODEX.template.md`](CODEX.template.md) — Codex provider guidance 範本
@@ -56,11 +57,14 @@ conda env update -f environment.yml --prune
 | 通道 | 適用場景 | 能力範圍 |
 |------|---------|---------|
 | **Claude Code CLI** | 深度互動開發 | 完整（多輪對話、workflow、MCP、sub-agent） |
+| **Codex CLI** | 深度互動開發 | 與 Claude 共用同一套 runtime contract；provider guidance 走 `AGENTS.md` + `CODEX.md` |
 | **Claude Dispatch** | 遠端操作 | 檔案讀寫、Python 腳本、KB 查詢（持久會話） |
 
 ## 專案結構
 
 ```
+├── AGENTS.md                   # Host-agent contract（預設以 architect 角色優化 kit）
+├── CODEX.md                    # Codex CLI provider 入口
 ├── .claude/
 │   ├── CLAUDE.md              # Claude 運行規則（每次會話自動載入）
 │   ├── agents/                # Sub-agent 定義（git 追蹤）
@@ -77,7 +81,7 @@ conda env update -f environment.yml --prune
 │       ├── pdf/               # PDF 操作（pypdf / reportlab）
 │       └── skill-creator/     # 建立/評測新 Skill（eval loop）
 ├── .aok/
-│   ├── kit-profile.md         # kit 部署身份與 provider surface
+│   ├── kit-profile.md         # kit 部署身份與 provider / host surface
 │   └── runtime-contracts.md   # startup / writeback / uncertainty contracts
 ├── shared/
 │   ├── kb/                    # 知識庫（gitignore，由 init.py 建立骨架）

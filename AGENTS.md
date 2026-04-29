@@ -1,156 +1,43 @@
 # AGENTS
 
-## Purpose
+This file is the host-agent operating contract for work done inside this `ai-office` repository.
 
-This repository extends Claude Code CLI into an office assistant. Future agent work must preserve Claude Code's native operating model instead of layering ad-hoc rules that fight it.
+It is not the runtime source of truth for deployed projects. Runtime authority stays in `.aok/runtime-contracts.md`, `shared/workflows/definitions/`, validators, and `shared/kb/knowledge_graph/kb_index.db`.
 
-## Runtime Rules
+## Default Role
 
-- `context.project` in workflow commands must be the canonical `PROJECT_ID` only, never `projects/<name>` and never `projects/`.
-- Use `PROJECT_ROOT = projects/<PROJECT_ID>/` only for file paths.
-- Use `bash shared/tools/conda-python.sh ...` for repo Python commands so Windows + conda + UTF-8 behavior stays stable.
-- `shared/workflows/state/current.json` is the only live workflow state file.
-- `shared/kb/knowledge_graph/kb_index.db` is the source of truth. Markdown under `shared/kb/` is export/read surface, not authority.
-- Agent / skill governance is defined in `AGENT_SKILL_GOVERNANCE.md`.
-- New agents or skills may only be created by `architect` after the trigger conditions in `AGENT_SKILL_GOVERNANCE.md` are met.
+Unless the user explicitly redirects the task, operate as the `architect` agent and optimize the kit itself:
 
-## Workflow Contracts
+- preserve provider-neutral runtime behavior
+- improve memory loading, writeback, and uncertainty handling
+- keep Claude Code CLI and Codex CLI surfaces aligned
+- split framework-generic assets from internal overlays
+- avoid ad-hoc agent/skill sprawl
 
-- `session_start` must restore context without preloading large KB markdown files.
-- `post_task` must end with DB-consistent KB exports when this round created new decisions or learnings.
-- `knowledge_lifecycle.write_to_dynamic` must complete with `kb_entry_ids`.
-- `data_ingestion` batch steps must preserve `operation_id`, `db_path`, and `tables` across validators.
+## Authority Order
 
-## Current Convergence Baseline (2026-04-23)
+When architectural guidance conflicts, use this order:
 
-- Canonical project-id/path split shipped: `PROJECT_ID` vs `PROJECT_ROOT`.
-- `coordinator.py` CLI hardened: `help`, `show`, `list`, `--session`, `--artifacts`, explicit `Next:` commands, targeted `force_close --instance`.
-- Windows conda launcher standardized via `shared/tools/conda-python.sh`.
-- `/promote` now has a real `promoter` agent.
-- `kb.py validate --warn-exit-zero` prevents WARN-only checks from looking like hard workflow failure.
-- `post_task` now enforces DB-first evidence (`decision_ids`, `learning_ids`) and required `refresh_kb_exports`.
-- `knowledge_lifecycle` validates exact `kb_entry_ids` in DB.
-- `data_ingestion` now requires batch evidence for exclusion, ingest, schema refresh, and post-validation.
+1. `.aok/runtime-contracts.md`
+2. `shared/workflows/definitions/` and `shared/workflows/engine.py`
+3. `shared/workflows/validators/`
+4. `shared/kb/knowledge_graph/kb_index.db`
+5. `.claude/agents/architect.md`
+6. provider overlays such as `.claude/CLAUDE.md` and `CODEX.md`
 
-## Governance Baseline (2026-04-24)
+## Working Rules
 
-- Agent / skill governance is now formalized in `AGENT_SKILL_GOVERNANCE.md`.
-- Structural lifecycle authority is now explicitly assigned to `architect`.
-- New generic engines were split out from internal overlays:
-  - `office-report-engine` from `report-builder`
-  - `ingest-exclusion-engine` from `bom-ingest-exclusion-applier`
-  - `automotive-reliability-standards` from `reliability-testing`
-- Internal assets are classified as `local-only`; generic assets are the tracked framework baseline.
+- Treat `ai-office` as an `agent-first memory runtime`, not a note system.
+- Make shared contracts generic first, then express Claude/Codex differences in provider-specific overlays.
+- Do not make markdown exports authoritative again.
+- Do not add provider-specific behavior to generic workflow contracts unless the behavior is truly host-specific.
+- New agents or skills, and lifecycle changes to existing ones, must go through the `architect` path.
 
-### Current Transitional Items
+## Current Focus
 
-- `compat`
-  - `reliability-testing`
-    Keep only as a compatibility shim. No new direct dependencies should point to it.
+Optimize the kit against these failure modes:
 
-- `candidate_future_generic`
-  - `ingest-archiver`
-  - `ingest-structure-detector`
-  - `ingest-db-writer`
-  - `ingest-validator`
-    These are still internal today, but structurally look like possible future generic ingestion pipeline components.
-
-### Current Overlay Items
-
-- `bom-ingest-exclusion-applier`
-- `report-builder`
-- `internal-reliability-practice`
-- `pptx-brand-master`
-
-These are intended overlays, not future generic targets.
-
-## Current Residual Assessment (2026-04-24)
-
-### Resolved
-
-- Canonical `PROJECT_ID` vs `PROJECT_ROOT` split is now the active baseline.
-- Windows repo-Python execution is standardized on `bash shared/tools/conda-python.sh ...`.
-- KB authority is DB-first (`shared/kb/knowledge_graph/kb_index.db`), with markdown treated as export/read surface only.
-- Generic vs internal overlay boundaries are explicit for Office reporting, exclusion execution, and automotive reliability standards.
-- `system_audit.py` now covers both governance consistency and structural drift, and the current baseline is green at `0 errors / 0 warnings`.
-- Remaining framework docs/templates/tools no longer carry active legacy skill-path, mixed placeholder, or old Windows launch-pattern drift.
-
-### Truly Unresolved
-
-- `data_ingestion` still depends on four local runtime agents (`ingest-archiver`, `ingest-structure-detector`, `ingest-db-writer`, `ingest-validator`) that remain `candidate_future_generic`.
-- Skills derived from standards/docs still lack a full source-update governance loop: source mapping, version drift detection, revalidation, and deprecation handling are not complete yet.
-- A fresh git-only clone is still not a full office assistant runtime; internal assets must be restored from a private bundle/source.
-
-### Deferable
-
-- `kb.py` CLI discoverability can still be improved so agents stop guessing unsupported flags.
-- Runtime cost slimming for `post_task` / `data_ingestion` is still valuable, but it is now optimization work rather than an architectural correctness blocker.
-- A dedicated internal asset restore script/bundle would improve operator UX, but current manual restoration is functional.
-
-## Change Log
-
-- `2026-04-27`
-  - Hardened workflow guardrails so key validation paths fail closed instead of silently passing.
-  - Fixed validator runtime drift by removing bare-system-`python` subprocess calls in KB validators.
-  - Reworked `check_memory` to stop depending on machine-specific Claude project hashes and to require structured snapshot trigger evidence.
-  - Tightened `check_dynamic_kb_status` so it validates exact `kb_entry_ids` written this round instead of falling back to recent rows.
-  - Raised checklist enforcement from minimal-length-only responses to low-signal answer rejection.
-  - Made `knowledge_lifecycle` post-write sync/promote checks required and added validators for edge-queue clearing plus active-high promote thresholds.
-  - Added `skill_self_learning.select_candidate` validation and a write guard that blocks governed agent/skill definition writes during self-learning.
-  - Made `post_task.check_hygiene` required and updated coordinator sample outputs/tests to match the stricter workflow contracts.
-
-- `2026-04-25`
-  - Renamed the company PPT overlay skill from `pptx-template` to `pptx-brand-master`.
-  - Reframed company PPT generation around PANJIT brand-master rules instead of a fixed content template model.
-  - Added formal PANJIT baseline assets:
-    - `brand_spec.panjit.json`
-    - `brand_logo.panjit.png`
-  - Added brand-spec extraction and demo flows to `shared/tools/pptx_panjit.py`:
-    - `dump-spec`
-    - `demo-with-spec`
-    - `extract-spec`
-  - Made `PanjitBrandMasterPresentation()` default to the formal PANJIT baseline spec.
-  - Fixed Windows/Git Bash path normalization and local `pptx` package shadowing in both `pptx_panjit.py` and `office_validator.py`.
-  - Updated `analysis_report`, `office-report-engine`, and `report-builder` so future company PPT generation routes use the new brand-master flow.
-
-- `2026-04-24`
-  - Added formal agent/skill governance and lifecycle rules.
-  - Split three high-risk mixed assets into generic engine/core plus internal overlay:
-    - `reliability-testing`
-    - `bom-ingest-exclusion-applier`
-    - `report-builder`
-  - Added `system_audit.py` and kept runtime consistency green after the split.
-  - Added a harness-native self-learning skill loop:
-    - `post_task` now scans mature learning candidates into `promotion_queue.json`
-    - new `skill_self_learning` workflow evaluates candidates and only writes approval proposals
-    - actual Skill creation still stays behind `/promote` + `architect` + explicit user approval
-  - Added durable promotion state:
-    - `promotion_state.py` manages `promotion_queue.json` and `eval_history.json`
-    - `in_progress` / `proposed` / cooldown outcomes prevent indefinite re-enqueueing
-    - queue/history read-modify-write paths now use per-file advisory locking
-  - Added skill-read usage tracking to feed promotion maturity from real SKILL.md usage.
-  - Cleared the remaining architecture drift in framework docs/templates/tools:
-    - standardized `.claude/skills-on-demand/` references across setup, templates, and protocol docs
-    - standardized repo Python invocation examples to `bash shared/tools/conda-python.sh ...`
-    - removed residual `{P}` placeholder usage from active framework guidance
-  - Expanded `system_audit.py` from governance-only checks to structural-drift checks:
-    - legacy skill path detection
-    - legacy placeholder detection
-    - Windows execution contract drift detection (bare repo-Python invocations / `conda run`)
-    - bounded scan coverage for templates, protocol docs, tool docs, and external JSON references
-  - Clarified that the four `data_ingestion` runtime agents remain active `candidate_future_generic` assets until only embedded-rule coupling remains before split graduation.
-
-## Next Optimization Priorities
-
-1. Real-world test `data_ingestion` on an actual new file import.
-2. Add source-update governance for standards/document-derived skills.
-3. Improve `kb.py` CLI discoverability so Claude stops guessing unsupported flags.
-4. Package internal asset restore into a private bundle/script path instead of manual copy-only guidance.
-
-## Do Not Regress
-
-- Do not reintroduce `{P}` as a mixed project-id/path placeholder.
-- Do not make markdown files authoritative again.
-- Do not rely on `conda run ...` for workflow execution on Windows.
-- Do not add workflow documentation that is not backed by engine enforcement or validator checks.
-- Do not create new agents or skills ad-hoc; route all such structural changes through `architect`.
+- agent forgets prior decisions
+- agent proceeds while uncertain and does not escalate
+- agent loads the wrong project-scoped knowledge subset
+- host-specific guidance drifts away from the common runtime contract

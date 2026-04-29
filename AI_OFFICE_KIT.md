@@ -7,6 +7,10 @@ This repo is both:
 
 ## Kit surfaces
 
+- `AGENTS.md`
+  Host-agent operating contract for architecture and repo work.
+- `CODEX.md`
+  Codex CLI provider entrypoint.
 - `init.py`
   Bootstraps directories, environment, KB skeleton, project template, and kit metadata.
 - `projects/_template/`
@@ -14,18 +18,18 @@ This repo is both:
 - `.aok/`
   Kit profile and runtime contract metadata for deployed instances.
 - `AGENTS.template.md`
-  Reusable agent surface overview.
+  Template seed for generated host-agent guidance.
 - `CLAUDE.template.md`
-  Claude-oriented runtime guidance template.
+  Template seed for Claude-oriented runtime guidance.
 - `CODEX.template.md`
-  Codex-oriented runtime guidance template.
+  Template seed for Codex-oriented runtime guidance.
 
 ## Mapping from contract-driven-delivery-kit
 
 - `cdd-kit init`
   `ai-office init.py`
-- provider templates (`CLAUDE.template.md`, `CODEX.template.md`, `AGENTS.template.md`)
-  same role here
+- host/provider surfaces (`AGENTS.md`, `.claude/CLAUDE.md`, `CODEX.md`)
+  same role here, with templates retained as seeds
 - `contracts/` as machine-checkable delivery constraints
   mapped here to workflow definitions + validators + runtime contracts
 - `specs/templates/`
@@ -44,4 +48,5 @@ This repo is both:
 
 - Split framework-generic assets from internal overlays.
 - Keep provider guidance templated and deployment-oriented.
+- Keep one common runtime contract and let Claude/Codex act as host overlays on top.
 - Keep startup, writeback, and uncertainty handling machine-verifiable.
