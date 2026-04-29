@@ -157,6 +157,10 @@ desktop.ini
 *.bak
 *.tmp
 *.temp
+err紀錄.txt
+
+# === Accidental local artifacts ===
+ai-officeprojects_templateworkspace*
 
 # === Workflow runtime state ===
 shared/workflows/state/

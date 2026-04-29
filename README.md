@@ -1,6 +1,6 @@
 # AI Office Assistant
 
-通用 AI 工作助手框架。基於 Claude Code，提供知識驅動的多專案工作流程管理。
+通用 AI 工作助手框架，也是可部署的 **AI-OFFICE-kit**。基於 Claude Code / Codex 類 agent runtime，提供知識驅動的多專案工作流程管理。
 
 ## 功能特色
 
@@ -33,6 +33,24 @@ python init.py --with ocr --with ml --with ai-runtime-gpu
 conda env update -f environment.yml --prune
 ```
 
+## AI-OFFICE-kit
+
+此 repo 不只是一個既有系統，也是一個可複用的 deployment kit。
+
+- [`AI_OFFICE_KIT.md`](AI_OFFICE_KIT.md) — kit 角色、runtime contract、演化方向
+- [`AGENTS.template.md`](AGENTS.template.md) — kit agent surface 範本
+- [`CLAUDE.template.md`](CLAUDE.template.md) — Claude provider guidance 範本
+- [`CODEX.template.md`](CODEX.template.md) — Codex provider guidance 範本
+- `.aok/kit-profile.md` / `.aok/runtime-contracts.md` — 由 `init.py` 建立的部署 metadata
+
+與 `contract-driven-delivery-kit` 類似，AI-OFFICE-kit 的核心不是單一 prompt，而是：
+
+- 可初始化的 repo 骨架
+- provider-aware guidance
+- machine-verifiable workflow / validator runtime
+- 可重複部署的 project template
+- DB-first memory runtime
+
 ## 存取方式
 
 | 通道 | 適用場景 | 能力範圍 |
@@ -58,6 +76,9 @@ conda env update -f environment.yml --prune
 │       ├── pptx-operations/   # PPT 精修已有（MCP COM）
 │       ├── pdf/               # PDF 操作（pypdf / reportlab）
 │       └── skill-creator/     # 建立/評測新 Skill（eval loop）
+├── .aok/
+│   ├── kit-profile.md         # kit 部署身份與 provider surface
+│   └── runtime-contracts.md   # startup / writeback / uncertainty contracts
 ├── shared/
 │   ├── kb/                    # 知識庫（gitignore，由 init.py 建立骨架）
 │   ├── tools/                 # 共用工具腳本（git 追蹤）

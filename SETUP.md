@@ -2,6 +2,8 @@
 
 > 一次性安裝文件。完成後日常使用請參考 `.claude/CLAUDE.md`。
 
+> 此 repo 同時是 **AI-OFFICE-kit**。除了運行既有 assistant，也可作為新實例的 deployment baseline。
+
 ---
 
 ## 系統需求
@@ -109,6 +111,7 @@ python init.py --project demo  # 建立第一個專案
 
 完成後：
 - `.claude/CLAUDE.md` 是 Claude 運行時的規則，每次會話自動載入
+- `.aok/kit-profile.md` 與 `.aok/runtime-contracts.md` 會標記此部署的 kit/runtime contract
 - 開始使用 Claude Code 即可
 
 ---

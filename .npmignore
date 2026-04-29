@@ -1,0 +1,43 @@
+# AI-OFFICE-kit npm package boundary
+# Include the reusable framework and templates.
+# Exclude runtime state, secrets, local knowledge, and live project data.
+
+# VCS / local settings
+.git/
+.env
+.env.*
+.mcp.json
+
+# Python / build artifacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+node_modules/
+
+# Local runtime knowledge and state
+shared/kb/
+shared/workflows/state/
+.claude/agent-memory/
+.claude/settings.local.json
+
+# Live project data
+projects/*/
+!projects/_template/
+
+# Local/internal artifacts not suitable for package publishing
+err紀錄.txt
+ai-officeprojects_templateworkspace*
+*.db
+*.sqlite
+*.sqlite3
+*.xlsx
+*.xls
+*.csv
+*.pdf
+*.pptx
+*.docx
+
+# Repo-local runtime guidance; package should ship provider templates instead
+.claude/CLAUDE.md
