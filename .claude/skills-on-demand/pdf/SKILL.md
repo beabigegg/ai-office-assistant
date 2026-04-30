@@ -3,8 +3,9 @@ name: pdf
 scope: generic
 tracking: tracked
 description: |
-  WHAT：PDF 基本操作（讀文字/表格、合併分割旋轉、新建 PDF、浮水印加密、OCR）。
-  WHEN：一般 .pdf 檔案處理，pypdf/pdfplumber/reportlab 可解決的任務。
+  WHAT：PDF 通用處理與讀取入口；先走共享的 `pdf_to_markdown.py` 統一提取流程，
+  再處理合併分割旋轉、新建 PDF、浮水印加密、OCR。
+  WHEN：任何專案需要讀取 .pdf 內容，或一般 PDF 操作任務。
   NOT：合併儲存格/跨頁複雜表格請用 table-reader；PLM/PA/OI/CP/FMEA 管線請用 plm-pdf-ingestion。
 triggers:
   - PDF, .pdf, pdf 讀取, pdf 提取
@@ -27,6 +28,24 @@ PYTHONUTF8=1 "C:\Users\lin46\.conda\envs\ai-office\python.exe" your_script.py
 ---
 
 ## 讀取與提取
+
+### 預設讀取流程：`pdf_to_markdown.py`
+
+任何專案需要把 PDF 內容轉成可分析 Markdown，先走共享工具：
+
+```bash
+bash shared/tools/conda-python.sh shared/tools/pdf_to_markdown.py analyze input.pdf
+bash shared/tools/conda-python.sh shared/tools/pdf_to_markdown.py convert input.pdf -o output.md
+```
+
+規則：
+- 預設主體是 `PyMuPDF get_text()`
+- 偵測到表格頁時，工具會**預設啟用 Docling 表格增強**
+- 低文字/掃描頁才會再補 `RapidOCR`
+- 若只抽部分頁面：`--pages 10-25`
+- 若需要停用 Docling：`--no-docling-tables`
+
+只要 `pdf_to_markdown.py` 的結果已足夠，就不要再額外寫一次性的 PDF 解析腳本。
 
 ### 文字提取（pdfplumber，保留版面）
 
@@ -56,7 +75,7 @@ if all_tables:
     pd.concat(all_tables, ignore_index=True).to_excel("extracted.xlsx", index=False)
 ```
 
-> 合併儲存格、跨頁、多欄複雜表格 → 改用 `table-reader` agent（視覺提取）。
+> 合併儲存格、跨頁、多欄複雜表格，或 `pdf_to_markdown.py` 仍失真 → 改用 `table-reader` agent（視覺提取）。
 
 ### 快速文字（命令列）
 
@@ -186,6 +205,7 @@ for i, img in enumerate(images):
 
 | 任務 | 工具 |
 |------|------|
+| 通用 PDF → Markdown 提取 | `shared/tools/pdf_to_markdown.py` |
 | 提取文字/表格 | pdfplumber |
 | 合併/分割/旋轉 | pypdf |
 | 新建 PDF | reportlab |

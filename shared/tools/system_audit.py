@@ -16,6 +16,7 @@ except ImportError:
 ROOT = Path(__file__).resolve().parent.parent.parent
 CLAUDE_DIR = ROOT / ".claude"
 AGENTS_DIR = CLAUDE_DIR / "agents"
+AGENT_MEMORY_DIR = CLAUDE_DIR / "agent-memory"
 COMMANDS_DIR = CLAUDE_DIR / "commands"
 SKILLS_DIR = CLAUDE_DIR / "skills-on-demand"
 WORKFLOWS_DIR = ROOT / "shared" / "workflows" / "definitions"
@@ -179,6 +180,26 @@ def scan_command_agent_refs() -> List[Tuple[str, int, str]]:
     return refs
 
 
+def load_text_agent_refs(agent_names: Set[str]) -> Set[str]:
+    refs: Set[str] = set()
+    scan_paths: List[Path] = [CLAUDE_DIR / "CLAUDE.md"]
+    scan_paths.extend(sorted(COMMANDS_DIR.glob("*.md")))
+    scan_paths.extend(sorted(SKILLS_DIR.glob("*/SKILL.md")))
+    scan_paths.extend(sorted(WORKFLOWS_DIR.glob("*.json")))
+
+    for path in scan_paths:
+        if not path.exists():
+            continue
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        for agent_name in agent_names:
+            if re.search(exact_token_pattern(agent_name), text):
+                refs.add(agent_name)
+    return refs
+
+
 def audit_skills() -> Tuple[List[str], List[str]]:
     errors: List[str] = []
     warns: List[str] = []
@@ -235,6 +256,46 @@ def audit_agents() -> Tuple[List[str], List[str]]:
             errors.append(f"agent missing or invalid tracking: {path.name}")
         if scope == "generic" and tracking != "tracked":
             warns.append(f"generic agent not marked tracked: {path.name}")
+    return errors, warns
+
+
+def audit_agent_activation_and_memory() -> Tuple[List[str], List[str]]:
+    errors: List[str] = []
+    warns: List[str] = []
+    agent_names = load_agent_names()
+
+    delegated_agents = {
+        agent_name for _, _, agent_name in load_workflow_delegate_refs()
+    }
+    command_agents = {
+        agent_name for _, _, agent_name in scan_command_agent_refs()
+    }
+    text_agents = load_text_agent_refs(agent_names)
+
+    for path in sorted(AGENTS_DIR.glob("*.md")):
+        meta = load_frontmatter(path)
+        name = meta.get("name") or path.stem
+        memory_scope = meta.get("memory")
+
+        if memory_scope in {"project", "user"}:
+            memory_dir = AGENT_MEMORY_DIR / name
+            if not memory_dir.exists():
+                warns.append(
+                    f"agent declares memory but has no memory dir: {name} -> .claude/agent-memory/{name}/"
+                )
+
+        if name == "architect":
+            continue
+
+        if (
+            name not in delegated_agents
+            and name not in command_agents
+            and name not in text_agents
+        ):
+            warns.append(
+                f"agent has no workflow delegate_to, command reference, or documented activation surface: {name}"
+            )
+
     return errors, warns
 
 
@@ -475,6 +536,9 @@ def main() -> int:
     agent_errors, agent_warns = audit_agents()
     errors.extend(agent_errors)
     warns.extend(agent_warns)
+    activation_errors, activation_warns = audit_agent_activation_and_memory()
+    errors.extend(activation_errors)
+    warns.extend(activation_warns)
 
     warns.extend(audit_sync_state())
     governance_errors, governance_warns = audit_governance()

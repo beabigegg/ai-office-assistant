@@ -1,0 +1,677 @@
+{
+  "version": 1,
+  "updated": "2026-04-30",
+  "description": "Machine-readable capability registry for routed surfaces. This is the authority for concrete tool/skill/agent/command/workflow relations; provider overlays should reference it rather than duplicating route tables.",
+  "indexing_policy": {
+    "relation_status_values": [
+      "pending",
+      "extracted",
+      "verified",
+      "not_applicable"
+    ],
+    "embedding_status_values": [
+      "pending",
+      "indexed",
+      "stale",
+      "not_applicable"
+    ],
+    "automation_modes": [
+      "auto",
+      "remind"
+    ],
+    "providers": {
+      "deterministic_relation_sync": "local_registry_parser",
+      "semantic_relation_extraction": "remote_api_gpt_oss",
+      "capability_embedding": "local_ollama_qwen3_embedding_4b"
+    },
+    "semantic_review_policy": {
+      "goal": "discoverability_only",
+      "acceptance_mode": "conservative_documented_only",
+      "require_documented_evidence": true,
+      "semi_auto_apply_relation_types": [
+        "uses",
+        "guided_by",
+        "prefers"
+      ],
+      "high_risk_relation_types": [
+        "delegates_to",
+        "escalates_to",
+        "defers_to"
+      ],
+      "rejection_memory_mode": "review_file_only",
+      "lifecycle_next_phase": "Introduce lifecycle_state and archive/superseded modeling after historical records and knowledge are cleaned up."
+    },
+    "notes": [
+      "Structured registry relations remain the authority for concrete wiring.",
+      "Deterministic structural relations may be synchronized locally from workflow/agent/command surfaces.",
+      "Semantic relation extraction should use remote api-gpt oss, not local embedding heuristics.",
+      "Capability embeddings should use the local embedding stack only.",
+      "Semantic relation suggestions are for discoverability improvement only, not for speculative orchestration expansion.",
+      "Only documented and clearly bounded relations should be accepted from semantic suggestion review.",
+      "Embeddings are discovery aids only; they must not become the source of truth for capability routing.",
+      "When capability entities or relations change, the system should either auto-refresh indexes or leave an explicit pending reminder."
+    ]
+  },
+  "entity_types": {
+    "tool": "Executable utility or runtime helper.",
+    "skill": "On-demand guidance asset.",
+    "agent": "Specialized sub-agent surface.",
+    "command": "User-facing command surface under .claude/commands.",
+    "workflow": "Coordinator-managed runtime workflow."
+  },
+  "entities": [
+    {
+      "id": "tool:pdf-to-markdown",
+      "type": "tool",
+      "name": "pdf_to_markdown",
+      "status": "active",
+      "scope": "shared",
+      "path": "shared/tools/pdf_to_markdown.py",
+      "summary": "Unified PDF extraction pipeline: PyMuPDF primary text extraction, Docling on detected table groups, OCR fallback for low-text pages."
+    },
+    {
+      "id": "tool:kb",
+      "type": "tool",
+      "name": "kb",
+      "status": "active",
+      "scope": "shared",
+      "path": "shared/tools/kb.py",
+      "summary": "Primary knowledge runtime and source-of-truth interface."
+    },
+    {
+      "id": "tool:db-schema",
+      "type": "tool",
+      "name": "db_schema",
+      "status": "active",
+      "scope": "shared",
+      "path": "shared/tools/db_schema.py",
+      "summary": "Schema inspection and compact schema summary generator."
+    },
+    {
+      "id": "tool:office-validator",
+      "type": "tool",
+      "name": "office_validator",
+      "status": "active",
+      "scope": "shared",
+      "path": "shared/tools/office_validator.py",
+      "summary": "Canonical Office output validator."
+    },
+    {
+      "id": "tool:agent-coverage",
+      "type": "tool",
+      "name": "agent_coverage",
+      "status": "maintenance_only",
+      "scope": "shared",
+      "path": "shared/tools/agent_coverage.py",
+      "summary": "Coverage report for sub-agent activation and memory scaffolding."
+    },
+    {
+      "id": "tool:tool-audit",
+      "type": "tool",
+      "name": "tool_audit",
+      "status": "maintenance_only",
+      "scope": "shared",
+      "path": "shared/tools/tool_audit.py",
+      "summary": "Shared tool governance audit."
+    },
+    {
+      "id": "tool:system-audit",
+      "type": "tool",
+      "name": "system_audit",
+      "status": "maintenance_only",
+      "scope": "shared",
+      "path": "shared/tools/system_audit.py",
+      "summary": "Structural audit for agent, skill, workflow, and command consistency."
+    },
+    {
+      "id": "tool:capability-registry",
+      "type": "tool",
+      "name": "capability_registry",
+      "status": "maintenance_only",
+      "scope": "shared",
+      "path": "shared/tools/capability_registry.py",
+      "summary": "SQLite query surface and sync tool for the capability registry authority."
+    },
+    {
+      "id": "tool:capability-audit",
+      "type": "tool",
+      "name": "capability_audit",
+      "status": "maintenance_only",
+      "scope": "shared",
+      "path": "shared/tools/capability_audit.py",
+      "summary": "Validates capability_registry.json entity paths and cross-entity relations."
+    },
+    {
+      "id": "tool:indexing-reminder",
+      "type": "tool",
+      "name": "indexing_reminder",
+      "status": "maintenance_only",
+      "scope": "shared",
+      "path": "shared/tools/indexing_reminder.py",
+      "summary": "Queues capability-related KB writebacks for semantic relation reminder handling."
+    },
+    {
+      "id": "tool:semantic-relation-extractor",
+      "type": "tool",
+      "name": "semantic_relation_extractor",
+      "status": "maintenance_only",
+      "scope": "shared",
+      "path": "shared/tools/semantic_relation_extractor.py",
+      "summary": "Remote api-gpt oss runner that turns semantic relation payloads into reviewable suggestion JSON."
+    },
+    {
+      "id": "tool:semantic-relation-review",
+      "type": "tool",
+      "name": "semantic_relation_review",
+      "status": "maintenance_only",
+      "scope": "shared",
+      "path": "shared/tools/semantic_relation_review.py",
+      "summary": "Review and apply semantic relation suggestions before they modify the authority registry."
+    },
+    {
+      "id": "skill:pdf",
+      "type": "skill",
+      "name": "pdf",
+      "status": "active",
+      "scope": "generic",
+      "path": ".claude/skills-on-demand/pdf/SKILL.md",
+      "summary": "Default PDF handling and extraction guidance."
+    },
+    {
+      "id": "skill:plm-pdf-ingestion",
+      "type": "skill",
+      "name": "plm-pdf-ingestion",
+      "status": "active",
+      "scope": "internal",
+      "path": ".claude/skills-on-demand/plm-pdf-ingestion/SKILL.md",
+      "summary": "PLM-specific PDF ingestion and document-type routing guidance."
+    },
+    {
+      "id": "skill:xlsx-authoring",
+      "type": "skill",
+      "name": "xlsx-authoring",
+      "status": "active",
+      "scope": "generic",
+      "path": ".claude/skills-on-demand/xlsx-authoring/SKILL.md",
+      "summary": "Excel creation guidance."
+    },
+    {
+      "id": "skill:docx-authoring",
+      "type": "skill",
+      "name": "docx-authoring",
+      "status": "active",
+      "scope": "generic",
+      "path": ".claude/skills-on-demand/docx-authoring/SKILL.md",
+      "summary": "Word creation guidance."
+    },
+    {
+      "id": "skill:pptx-authoring",
+      "type": "skill",
+      "name": "pptx-authoring",
+      "status": "active",
+      "scope": "generic",
+      "path": ".claude/skills-on-demand/pptx-authoring/SKILL.md",
+      "summary": "Freeform PowerPoint authoring guidance."
+    },
+    {
+      "id": "skill:marp-pptx",
+      "type": "skill",
+      "name": "marp-pptx",
+      "status": "active",
+      "scope": "generic",
+      "path": ".claude/skills-on-demand/marp-pptx/SKILL.md",
+      "summary": "Markdown-to-PPTX and PDF route."
+    },
+    {
+      "id": "skill:pptx-operations",
+      "type": "skill",
+      "name": "pptx-operations",
+      "status": "active",
+      "scope": "generic",
+      "path": ".claude/skills-on-demand/pptx-operations/SKILL.md",
+      "summary": "Editing and refining existing PowerPoint files."
+    },
+    {
+      "id": "agent:table-reader",
+      "type": "agent",
+      "name": "table-reader",
+      "status": "active",
+      "scope": "generic",
+      "path": ".claude/agents/table-reader.md",
+      "summary": "Vision-based extractor for complex PDF tables."
+    },
+    {
+      "id": "agent:query-runner",
+      "type": "agent",
+      "name": "query-runner",
+      "status": "active",
+      "scope": "generic",
+      "path": ".claude/agents/query-runner.md",
+      "summary": "Runs heavier SQL query workloads off the leader path."
+    },
+    {
+      "id": "agent:office-report-engine",
+      "type": "agent",
+      "name": "office-report-engine",
+      "status": "active",
+      "scope": "generic",
+      "path": ".claude/agents/office-report-engine.md",
+      "summary": "Office document authoring and modification runtime."
+    },
+    {
+      "id": "agent:report-builder",
+      "type": "agent",
+      "name": "report-builder",
+      "status": "active",
+      "scope": "generic",
+      "path": ".claude/agents/report-builder.md",
+      "summary": "Company-style report-building specialist."
+    },
+    {
+      "id": "agent:questionnaire-response-drafter",
+      "type": "agent",
+      "name": "questionnaire-response-drafter",
+      "status": "active",
+      "scope": "generic",
+      "path": ".claude/agents/questionnaire-response-drafter.md",
+      "summary": "Batch LLM answer drafting specialist."
+    },
+    {
+      "id": "agent:architect",
+      "type": "agent",
+      "name": "architect",
+      "status": "active",
+      "scope": "generic",
+      "path": ".claude/agents/architect.md",
+      "summary": "Governance and architecture specialist."
+    },
+    {
+      "id": "agent:ingest-archiver",
+      "type": "agent",
+      "name": "ingest-archiver",
+      "status": "active",
+      "scope": "generic",
+      "path": ".claude/agents/ingest-archiver.md",
+      "summary": "Archives raw source files for ingestion."
+    },
+    {
+      "id": "agent:ingest-structure-detector",
+      "type": "agent",
+      "name": "ingest-structure-detector",
+      "status": "active",
+      "scope": "generic",
+      "path": ".claude/agents/ingest-structure-detector.md",
+      "summary": "Classifies source structure and selects ingestion strategy."
+    },
+    {
+      "id": "agent:ingest-exclusion-engine",
+      "type": "agent",
+      "name": "ingest-exclusion-engine",
+      "status": "active",
+      "scope": "generic",
+      "path": ".claude/agents/ingest-exclusion-engine.md",
+      "summary": "Applies exclusion logic before writeback."
+    },
+    {
+      "id": "agent:ingest-db-writer",
+      "type": "agent",
+      "name": "ingest-db-writer",
+      "status": "active",
+      "scope": "generic",
+      "path": ".claude/agents/ingest-db-writer.md",
+      "summary": "Performs structured database writeback for ingestion."
+    },
+    {
+      "id": "agent:ingest-validator",
+      "type": "agent",
+      "name": "ingest-validator",
+      "status": "active",
+      "scope": "generic",
+      "path": ".claude/agents/ingest-validator.md",
+      "summary": "Checks ingestion results and evidence trails."
+    },
+    {
+      "id": "command:read-pdf",
+      "type": "command",
+      "name": "read-pdf",
+      "status": "active",
+      "scope": "generic",
+      "path": ".claude/commands/read-pdf.md",
+      "summary": "Default command surface for PDF-to-Markdown extraction."
+    },
+    {
+      "id": "command:extract-pdf-table",
+      "type": "command",
+      "name": "extract-pdf-table",
+      "status": "active",
+      "scope": "generic",
+      "path": ".claude/commands/extract-pdf-table.md",
+      "summary": "Escalation path for complex table extraction when the standard PDF route is insufficient."
+    },
+    {
+      "id": "command:brand-report",
+      "type": "command",
+      "name": "brand-report",
+      "status": "active",
+      "scope": "generic",
+      "path": ".claude/commands/brand-report.md",
+      "summary": "Builds company-style reports."
+    },
+    {
+      "id": "command:questionnaire-response",
+      "type": "command",
+      "name": "questionnaire-response",
+      "status": "active",
+      "scope": "generic",
+      "path": ".claude/commands/questionnaire-response.md",
+      "summary": "Routes questionnaire-style batch drafting work."
+    },
+    {
+      "id": "command:status",
+      "type": "command",
+      "name": "status",
+      "status": "active",
+      "scope": "generic",
+      "path": ".claude/commands/status.md",
+      "summary": "System status and governance overview."
+    },
+    {
+      "id": "command:promote",
+      "type": "command",
+      "name": "promote",
+      "status": "active",
+      "scope": "generic",
+      "path": ".claude/commands/promote.md",
+      "summary": "Promotion path for maturing learning into skills."
+    },
+    {
+      "id": "workflow:session-start",
+      "type": "workflow",
+      "name": "session_start",
+      "status": "active",
+      "scope": "shared",
+      "path": "shared/workflows/definitions/session_start.json",
+      "summary": "Loads project-scoped runtime context at session start."
+    },
+    {
+      "id": "workflow:post-task",
+      "type": "workflow",
+      "name": "post_task",
+      "status": "active",
+      "scope": "shared",
+      "path": "shared/workflows/definitions/post_task.json",
+      "summary": "Writes back decisions, learning, and hygiene status after significant work."
+    },
+    {
+      "id": "workflow:data-ingestion",
+      "type": "workflow",
+      "name": "data_ingestion",
+      "status": "active",
+      "scope": "shared",
+      "path": "shared/workflows/definitions/data_ingestion.json",
+      "summary": "Governed ingestion flow with explicit delegation."
+    },
+    {
+      "id": "workflow:knowledge-lifecycle",
+      "type": "workflow",
+      "name": "knowledge_lifecycle",
+      "status": "active",
+      "scope": "shared",
+      "path": "shared/workflows/definitions/knowledge_lifecycle.json",
+      "summary": "Classifies and promotes knowledge under DB-first rules."
+    },
+    {
+      "id": "workflow:analysis-report",
+      "type": "workflow",
+      "name": "analysis_report",
+      "status": "active",
+      "scope": "shared",
+      "path": "shared/workflows/definitions/analysis_report.json",
+      "summary": "Schema-first analysis and reporting workflow."
+    }
+  ],
+  "pending_actions": [
+    {
+      "id": "registry-relations-bootstrap",
+      "target": "shared/registry/capability_registry.json",
+      "action": "relation_extraction",
+      "mode": "auto",
+      "status": "completed",
+      "summary": "Deterministic relation sync is implemented via capability_registry.py sync-relations.",
+      "recommended_trigger": "After registry updates or when new routed surfaces are added."
+    },
+    {
+      "id": "registry-embeddings-bootstrap",
+      "target": "shared/registry/capability_registry.json",
+      "action": "embedding_index",
+      "mode": "auto",
+      "status": "completed",
+      "summary": "Capability embeddings built via capability_registry.py sync-embeddings using qwen3-embedding:4b.",
+      "recommended_trigger": "Before relying on semantic capability discovery."
+    },
+    {
+      "id": "registry-semantic-relations-bootstrap",
+      "target": "shared/registry/capability_registry.json",
+      "action": "semantic_relation_extraction",
+      "mode": "auto",
+      "status": "completed",
+      "summary": "Remote semantic relation extraction is implemented via semantic_relation_extractor.py using GPT_OSS_ENDPOINT / GPT_OSS_API_KEY and capability_registry.py export-semantic-relations.",
+      "recommended_trigger": "When semantic or inferred capability relations should be proposed from descriptions rather than explicit route syntax."
+    },
+    {
+      "id": "kb-writeback-indexing",
+      "target": "shared/kb/knowledge_graph/kb_index.db",
+      "action": "writeback_indexing_policy",
+      "mode": "auto",
+      "status": "completed",
+      "summary": "kb.py continues local embedding writes; capability-related KB entries are scanned into indexing_reminders.json via indexing_reminder.py for semantic relation follow-up.",
+      "recommended_trigger": "Before expanding DB-backed registry or broader knowledge writeback automation."
+    }
+  ],
+  "relations": [
+    {
+      "from": "command:read-pdf",
+      "type": "uses",
+      "to": "tool:pdf-to-markdown",
+      "notes": "Default PDF reading path for any project."
+    },
+    {
+      "from": "command:read-pdf",
+      "type": "guided_by",
+      "to": "skill:pdf"
+    },
+    {
+      "from": "command:read-pdf",
+      "type": "escalates_to",
+      "to": "command:extract-pdf-table",
+      "notes": "Escalate when standard extraction still distorts complex tables."
+    },
+    {
+      "from": "command:extract-pdf-table",
+      "type": "delegates_to",
+      "to": "agent:table-reader"
+    },
+    {
+      "from": "command:extract-pdf-table",
+      "type": "uses",
+      "to": "tool:pdf-to-markdown"
+    },
+    {
+      "from": "skill:pdf",
+      "type": "prefers",
+      "to": "command:read-pdf"
+    },
+    {
+      "from": "skill:pdf",
+      "type": "uses",
+      "to": "tool:pdf-to-markdown"
+    },
+    {
+      "from": "skill:pdf",
+      "type": "escalates_to",
+      "to": "agent:table-reader"
+    },
+    {
+      "from": "skill:pdf",
+      "type": "defers_to",
+      "to": "skill:plm-pdf-ingestion"
+    },
+    {
+      "from": "skill:plm-pdf-ingestion",
+      "type": "uses",
+      "to": "tool:pdf-to-markdown",
+      "notes": "PLM PDF routing still reuses the shared hybrid extraction primitive."
+    },
+    {
+      "from": "workflow:analysis-report",
+      "type": "delegates_to",
+      "to": "agent:query-runner"
+    },
+    {
+      "from": "workflow:analysis-report",
+      "type": "delegates_to",
+      "to": "agent:office-report-engine"
+    },
+    {
+      "from": "command:brand-report",
+      "type": "delegates_to",
+      "to": "agent:report-builder"
+    },
+    {
+      "from": "command:questionnaire-response",
+      "type": "delegates_to",
+      "to": "agent:questionnaire-response-drafter"
+    },
+    {
+      "from": "agent:office-report-engine",
+      "type": "guided_by",
+      "to": "skill:pdf"
+    },
+    {
+      "from": "agent:office-report-engine",
+      "type": "guided_by",
+      "to": "skill:xlsx-authoring"
+    },
+    {
+      "from": "agent:office-report-engine",
+      "type": "guided_by",
+      "to": "skill:docx-authoring"
+    },
+    {
+      "from": "agent:office-report-engine",
+      "type": "guided_by",
+      "to": "skill:pptx-authoring"
+    },
+    {
+      "from": "agent:office-report-engine",
+      "type": "guided_by",
+      "to": "skill:marp-pptx"
+    },
+    {
+      "from": "agent:office-report-engine",
+      "type": "guided_by",
+      "to": "skill:pptx-operations"
+    },
+    {
+      "from": "workflow:data-ingestion",
+      "type": "delegates_to",
+      "to": "agent:ingest-archiver"
+    },
+    {
+      "from": "workflow:data-ingestion",
+      "type": "delegates_to",
+      "to": "agent:ingest-structure-detector"
+    },
+    {
+      "from": "workflow:data-ingestion",
+      "type": "delegates_to",
+      "to": "agent:ingest-exclusion-engine"
+    },
+    {
+      "from": "workflow:data-ingestion",
+      "type": "delegates_to",
+      "to": "agent:ingest-db-writer"
+    },
+    {
+      "from": "workflow:data-ingestion",
+      "type": "delegates_to",
+      "to": "agent:ingest-validator"
+    },
+    {
+      "from": "command:status",
+      "type": "uses",
+      "to": "tool:agent-coverage"
+    },
+    {
+      "from": "command:status",
+      "type": "uses",
+      "to": "tool:tool-audit"
+    },
+    {
+      "from": "command:status",
+      "type": "uses",
+      "to": "tool:capability-registry"
+    },
+    {
+      "from": "command:status",
+      "type": "uses",
+      "to": "tool:capability-audit"
+    },
+    {
+      "from": "command:status",
+      "type": "uses",
+      "to": "tool:indexing-reminder"
+    },
+    {
+      "from": "command:status",
+      "type": "uses",
+      "to": "tool:semantic-relation-extractor"
+    },
+    {
+      "from": "command:status",
+      "type": "uses",
+      "to": "tool:semantic-relation-review"
+    },
+    {
+      "from": "command:promote",
+      "type": "uses",
+      "to": "tool:kb"
+    },
+    {
+      "from": "agent:report-builder",
+      "type": "guided_by",
+      "to": "skill:docx-authoring",
+      "notes": "auto-discovered from .claude/agents/report-builder.md"
+    },
+    {
+      "from": "agent:report-builder",
+      "type": "guided_by",
+      "to": "skill:pptx-authoring",
+      "notes": "auto-discovered from .claude/agents/report-builder.md"
+    },
+    {
+      "from": "agent:report-builder",
+      "type": "guided_by",
+      "to": "skill:pptx-operations",
+      "notes": "auto-discovered from .claude/agents/report-builder.md"
+    },
+    {
+      "from": "agent:report-builder",
+      "type": "guided_by",
+      "to": "skill:xlsx-authoring",
+      "notes": "auto-discovered from .claude/agents/report-builder.md"
+    },
+    {
+      "from": "command:status",
+      "type": "uses",
+      "to": "tool:kb",
+      "notes": "auto-discovered from .claude/commands/status.md"
+    },
+    {
+      "from": "command:read-pdf",
+      "type": "guided_by",
+      "to": "skill:plm-pdf-ingestion",
+      "notes": "approved semantic suggestion (SR-003): For PLM‑specific documents the command can follow the PLM PDF ingestion skill in addition to the generic PDF skill. | evidence=.claude/commands/read-pdf.md; .claude/skills-on-demand/plm-pdf-ingestion/SKILL.md | impact=Improves discoverability by surfacing the documented PLM-specific branch from the generic PDF entrypoint."
+    }
+  ]
+}

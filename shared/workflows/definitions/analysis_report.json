@@ -16,6 +16,8 @@
       "id": "query_db",
       "description": "Execute analysis queries against SQLite database (must use schema from load_schema step)",
       "instruction": "Write SQL using ONLY column/table names confirmed in load_schema. Run: bash shared/tools/conda-python.sh shared/tools/kb.py search '<domain topic>' --top 5 for domain rule context before querying. Large result sets (50+ rows) → delegate to query-runner agent to avoid context window pollution.",
+      "delegate_to": "query-runner",
+      "delegate_hint": "Use query-runner when the query is expected to return 50+ rows, when multiple analytical queries are needed, or when full SQL output would bloat Leader context",
       "depends_on": ["load_schema"],
       "required": true,
       "required_outputs": [],

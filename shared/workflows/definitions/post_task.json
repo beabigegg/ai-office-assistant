@@ -96,10 +96,23 @@
       "validator_params": {}
     },
     {
+      "id": "sync_indexing_reminders",
+      "description": "Scan newly written KB entries for capability-related semantic relation follow-up reminders",
+      "instruction": "If this round added `decision_ids` or `learning_ids`, run `bash shared/tools/conda-python.sh shared/tools/indexing_reminder.py sync-kb --entry-id <id1> --entry-id <id2> ...` for all newly written KB ids, then complete with `{\"indexing_reminders_synced\":true}`. This does NOT replace kb.py local embedding writes; it only queues capability-related entries for remote semantic relation extraction follow-up. If no new KB entries were added, complete with `{\"skipped\":true}`.",
+      "depends_on": ["refresh_kb_exports"],
+      "required": true,
+      "required_outputs": [
+        {"output_key": "indexing_reminders_synced", "description": "capability-related KB reminders scanned"}
+      ],
+      "required_outputs_unless": "skipped",
+      "validator": null,
+      "validator_params": {}
+    },
+    {
       "id": "scan_promotion_candidates",
       "description": "自動掃描成熟 learning 候選並寫入升級佇列",
       "instruction": "Informational node only. The actual scan runs in coordinator's Python completion block (not here) and writes results to promotion_queue.json. This optional node is auto-skipped by the engine. The validator check_promotion_candidates runs as a secondary consistency check when explicitly invoked; it does NOT auto-complete this node.",
-      "depends_on": ["refresh_kb_exports"],
+      "depends_on": ["sync_indexing_reminders"],
       "required": false,
       "required_outputs": [],
       "validator": "check_promotion_candidates",

@@ -6,6 +6,8 @@
       "id": "archive_original",
       "description": "Archive original file to {PROJECT_ROOT}/vault/originals/",
       "instruction": "Delegate to ingest-archiver agent. Brief: copy source file to {PROJECT_ROOT}/vault/originals/, compute SHA-256, handle filename collisions, record size. Return archived path, sha256, file size.",
+      "delegate_to": "ingest-archiver",
+      "delegate_hint": "Use ingest-archiver for archive + checksum + collision-safe file intake",
       "depends_on": [],
       "required": true,
       "required_outputs": [
@@ -18,6 +20,8 @@
       "id": "detect_structure",
       "description": "Detect file structure: columns, encoding, row count, data types",
       "instruction": "Delegate to ingest-structure-detector agent. Brief: read archived file from {PROJECT_ROOT}/vault/originals/, detect sheets/columns/encoding/row count/merged cells. Return a structural report for confirm_with_user. If table-name suggestions are included, treat them as heuristic candidates only; final target-table choice is confirmed later, not decided inside detect_structure.",
+      "delegate_to": "ingest-structure-detector",
+      "delegate_hint": "Use ingest-structure-detector for file structure discovery before any schema mapping or DB choice",
       "depends_on": ["archive_original"],
       "required": true,
       "required_outputs": [],
@@ -37,7 +41,9 @@
     {
       "id": "apply_exclusions",
       "description": "Apply data exclusion rules if needed (exclusion is project-specific, not at ingestion time)",
-      "instruction": "Delegate to ingest-exclusion-engine agent. Brief: apply the confirmed exclusion_policy, normalize merged cells before matching, produce operation_id, and return rows_in/rows_out/exclusion_summary. If company-specific BOM/ECR exclusion rules are required, consult the local overlay agent/skill first, then execute via the engine. Complete with: --outputs '{\"operation_id\":\"xxx\"}'.",
+      "instruction": "Delegate to ingest-exclusion-engine agent. Brief: apply the confirmed exclusion_policy, normalize merged cells before matching, produce operation_id, and return rows_in/rows_out/exclusion_summary. If company-specific BOM/ECR exclusion rules are required, consult the `bom-ingest-exclusion-applier` overlay agent or its paired local skill first, then execute via the engine. Complete with: --outputs '{\"operation_id\":\"xxx\"}'.",
+      "delegate_to": "ingest-exclusion-engine",
+      "delegate_hint": "Use ingest-exclusion-engine for generic exclusion execution; consult overlay rules only when project-specific policy is required",
       "depends_on": ["confirm_with_user"],
       "required": true,
       "required_outputs": [
@@ -53,6 +59,8 @@
       "id": "ingest_to_db",
       "description": "Ingest cleaned data into SQLite database with source tracking",
       "instruction": "Delegate to ingest-db-writer agent. Brief: batch INSERT (batch_size=1000) to {PROJECT_ROOT}/workspace/db/*.db. Every row must have _operation_id, _source_file, _source_version, _source_row columns. Check idempotency via operation_id before inserting. Complete with outputs including db_path, operation_id, and tables written, for example {\"db_path\":\"projects/<project>/workspace/db/<name>.db\",\"operation_id\":\"...\",\"tables\":[\"raw_bom\"]}.",
+      "delegate_to": "ingest-db-writer",
+      "delegate_hint": "Use ingest-db-writer for idempotent SQLite writes with traceability columns",
       "depends_on": ["apply_exclusions"],
       "required": true,
       "required_outputs": [
@@ -81,6 +89,8 @@
       "id": "post_validation",
       "description": "Validate ingested data quality. Read checklist, run each check, report results in checklist_responses.",
       "instruction": "Delegate to ingest-validator agent. Brief: run checklist shared/workflows/checklists/data_ingestion__post_validation.yaml checks (pv-001...pv-NNN), scoped to current operation_id. Checks cover: NULL rate, duplicates, value ranges, encoding, traceability columns (_operation_id/_source_file/_source_version/_source_row present). Complete with checklist_responses plus db_path, operation_id, and tables so traceability validator scopes to the exact batch.",
+      "delegate_to": "ingest-validator",
+      "delegate_hint": "Use ingest-validator for batch-scoped validation and traceability checks after ingestion",
       "depends_on": ["generate_schema_cache"],
       "required": true,
       "required_outputs": [

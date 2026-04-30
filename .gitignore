@@ -164,3 +164,9 @@ ai-officeprojects_templateworkspace*
 
 # === Workflow runtime state ===
 shared/workflows/state/
+
+# === Capability registry runtime artifacts ===
+shared/registry/*.db
+shared/registry/semantic_relation_payload*.json
+shared/registry/semantic_relation_suggestions*.json
+shared/registry/semantic_relation_review*.json

@@ -9,8 +9,11 @@ pdf_to_markdown.py — PDF → Markdown 通用轉換工具
     # 基本轉換
     python pdf_to_markdown.py convert input.pdf -o output.md
 
-    # 啟用 Docling 表格增強（偵測表格頁 → Docling 提取跨頁表格）
-    python pdf_to_markdown.py convert input.pdf -o output.md --docling-tables
+    # 預設啟用 Docling 表格增強（偵測表格頁 → Docling 提取跨頁表格）
+    python pdf_to_markdown.py convert input.pdf -o output.md
+
+    # 明確停用 Docling 表格增強
+    python pdf_to_markdown.py convert input.pdf -o output.md --no-docling-tables
 
     # 僅分析（不轉換，顯示頁面統計 + 表格偵測）
     python pdf_to_markdown.py analyze input.pdf
@@ -26,8 +29,8 @@ pdf_to_markdown.py — PDF → Markdown 通用轉換工具
     result = converter.convert("input.pdf")
     result.save("output.md")
 
-    # 啟用 Docling 表格增強（跨頁表格自動偵測 + 分群處理）
-    converter = PdfToMarkdown(use_docling_tables=True)
+    # 預設啟用 Docling 表格增強（跨頁表格自動偵測 + 分群處理）
+    converter = PdfToMarkdown()
     result = converter.convert("input.pdf")
 """
 
@@ -202,7 +205,7 @@ class PdfToMarkdown:
         ocr_dpi: OCR 渲染解析度（預設 150，越高越精確但越慢）
         min_words_for_text: 低於此字數的頁面觸發 OCR（預設 20）
         use_ocr: 是否啟用 OCR（預設 True）
-        use_docling_tables: 啟用 Docling 表格增強（預設 False）
+        use_docling_tables: 啟用 Docling 表格增強（預設 True）
             偵測含表格的頁面，將連續表格頁分群後用 Docling 處理，
             保留跨頁表格的完整結構。需安裝 docling 套件。
         docling_max_batch: Docling 單批最大頁數（預設 15，避開記憶體 bug）
@@ -213,7 +216,7 @@ class PdfToMarkdown:
         ocr_dpi: int = 150,
         min_words_for_text: int = 20,
         use_ocr: bool = True,
-        use_docling_tables: bool = False,
+        use_docling_tables: bool = True,
         docling_max_batch: int = 15,
     ):
         self.ocr_dpi = ocr_dpi
@@ -564,8 +567,19 @@ def main():
     p_conv.add_argument('--pages', help='Page range, e.g. 1-50')
     p_conv.add_argument('--no-ocr', action='store_true', help='Disable OCR')
     p_conv.add_argument('--no-page-markers', action='store_true', help='Omit <!-- page N --> markers')
-    p_conv.add_argument('--docling-tables', action='store_true',
-                       help='Use Docling for table-heavy pages (better cross-page table support)')
+    p_conv.add_argument(
+        '--docling-tables',
+        dest='docling_tables',
+        action='store_true',
+        default=True,
+        help='Enable Docling for detected table-heavy pages (default: enabled)',
+    )
+    p_conv.add_argument(
+        '--no-docling-tables',
+        dest='docling_tables',
+        action='store_false',
+        help='Disable Docling table enhancement and use PyMuPDF/OCR only',
+    )
 
     # analyze
     p_ana = sub.add_parser('analyze', help='Analyze PDF without converting')

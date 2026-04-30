@@ -1,0 +1,371 @@
+{
+  "version": 1,
+  "updated": "2026-04-29",
+  "scope": "shared/tools",
+  "classes": {
+    "core_shared": "Cross-project runtime or governance tool with stable contract.",
+    "domain_shared": "Reusable domain tool or helper with bounded business logic.",
+    "maintenance": "Migration, audit, compatibility, or maintenance-only tool.",
+    "temporary_candidate": "Likely narrow, report-specific, or under-governed tool that should not be treated as a stable shared primitive."
+  },
+  "statuses": {
+    "active": "Expected to be available and reusable.",
+    "maintenance_only": "Kept for governance, migration, or support tasks.",
+    "compat": "Kept for compatibility or transition; do not expand scope.",
+    "candidate_review": "Exists, but should be reviewed for demotion, relocation, or retirement."
+  },
+  "path_policies": [
+    {
+      "prefix": "shared/tools/office/",
+      "class": "domain_shared",
+      "status": "active",
+      "owner": "architect",
+      "notes": "Office unpack/pack/validation helpers for reusable document pipelines."
+    },
+    {
+      "prefix": "shared/tools/docx/",
+      "class": "domain_shared",
+      "status": "active",
+      "owner": "architect",
+      "notes": "Word-specific helpers; reusable but not part of the cross-project KB/runtime core."
+    },
+    {
+      "prefix": "shared/tools/pptx/",
+      "class": "domain_shared",
+      "status": "active",
+      "owner": "architect",
+      "notes": "PPTX structure helpers used by PPT authoring/edit flows."
+    },
+    {
+      "prefix": "shared/tools/parsers/",
+      "class": "domain_shared",
+      "status": "active",
+      "owner": "architect",
+      "notes": "Reusable parsing helpers."
+    },
+    {
+      "prefix": "shared/tools/searchers/",
+      "class": "domain_shared",
+      "status": "candidate_review",
+      "owner": "architect",
+      "notes": "Search helpers exist, but runtime integration is still weak and should be reviewed."
+    },
+    {
+      "prefix": "shared/tools/pdf/",
+      "class": "maintenance",
+      "status": "maintenance_only",
+      "owner": "architect",
+      "notes": "PDF form/annotation helpers form a coherent sub-toolchain, but they are not part of the current active runtime surface and should be treated as maintenance-only until reactivated by a governed PDF-form workflow."
+    },
+    {
+      "prefix": "shared/tools/reporters/",
+      "class": "temporary_candidate",
+      "status": "candidate_review",
+      "owner": "architect",
+      "notes": "Reporter scripts are high-risk for single-use drift unless explicitly promoted."
+    }
+  ],
+  "tools": {
+    "shared/tools/conda-python.sh": {
+      "class": "core_shared",
+      "status": "active",
+      "owner": "architect",
+      "business_logic_level": "runtime_launcher",
+      "notes": "Canonical Bash launcher for repo Python execution."
+    },
+    "shared/tools/conda-python.ps1": {
+      "class": "core_shared",
+      "status": "active",
+      "owner": "architect",
+      "business_logic_level": "runtime_launcher",
+      "notes": "PowerShell launcher fallback for Windows users."
+    },
+    "shared/tools/backlog.py": {
+      "class": "core_shared",
+      "status": "active",
+      "owner": "architect",
+      "business_logic_level": "project_runtime",
+      "notes": "Structured backlog runtime for project_management projects."
+    },
+    "shared/tools/bom_parser.py": {
+      "class": "domain_shared",
+      "status": "active",
+      "owner": "architect",
+      "business_logic_level": "tier1_parser",
+      "notes": "Tier-1 BOM parsing primitive with reusable extraction logic."
+    },
+    "shared/tools/check_sot_ld.py": {
+      "class": "maintenance",
+      "status": "maintenance_only",
+      "owner": "architect",
+      "business_logic_level": "governance",
+      "notes": "Governance checker for layered dependency discipline."
+    },
+    "shared/tools/db_schema.py": {
+      "class": "core_shared",
+      "status": "active",
+      "owner": "architect",
+      "business_logic_level": "schema_runtime",
+      "notes": "Canonical schema cache generator and reader."
+    },
+    "shared/tools/decision_meta_backfill.py": {
+      "class": "maintenance",
+      "status": "maintenance_only",
+      "owner": "architect",
+      "business_logic_level": "migration",
+      "notes": "One-off backfill utility; not a normal runtime primitive."
+    },
+    "shared/tools/embedding_utils.py": {
+      "class": "domain_shared",
+      "status": "active",
+      "owner": "architect",
+      "business_logic_level": "shared_helper",
+      "notes": "Shared embedding helper for KB/vector workflows."
+    },
+    "shared/tools/excel_styles.py": {
+      "class": "domain_shared",
+      "status": "active",
+      "owner": "architect",
+      "business_logic_level": "shared_helper",
+      "notes": "Reusable Excel style definitions."
+    },
+    "shared/tools/graph_query.py": {
+      "class": "domain_shared",
+      "status": "active",
+      "owner": "architect",
+      "business_logic_level": "knowledge_query",
+      "notes": "Knowledge-graph query helper used beyond a single report."
+    },
+    "shared/tools/ingest_gate_hook.py": {
+      "class": "core_shared",
+      "status": "active",
+      "owner": "architect",
+      "business_logic_level": "runtime_guard",
+      "notes": "Prompt-time gate for ingestion decisions."
+    },
+    "shared/tools/indexing_reminder.py": {
+      "class": "maintenance",
+      "status": "active",
+      "owner": "architect",
+      "business_logic_level": "governance",
+      "notes": "Tracks capability-related KB writebacks that should trigger semantic relation reminders."
+    },
+    "shared/tools/kb.py": {
+      "class": "core_shared",
+      "status": "active",
+      "owner": "architect",
+      "business_logic_level": "knowledge_runtime",
+      "notes": "Primary KB CLI and source-of-truth interface."
+    },
+    "shared/tools/kb_index.py": {
+      "class": "maintenance",
+      "status": "compat",
+      "owner": "architect",
+      "business_logic_level": "compat",
+      "notes": "Legacy KB entry point retained for compatibility."
+    },
+    "shared/tools/kb_writer.py": {
+      "class": "maintenance",
+      "status": "compat",
+      "owner": "architect",
+      "business_logic_level": "compat",
+      "notes": "Legacy wrapper; should not be expanded."
+    },
+    "shared/tools/ltx_csv_parser.py": {
+      "class": "domain_shared",
+      "status": "active",
+      "owner": "architect",
+      "business_logic_level": "domain_ingest",
+      "notes": "Reusable parser for LTX tester CSVs."
+    },
+    "shared/tools/marp_build.py": {
+      "class": "domain_shared",
+      "status": "active",
+      "owner": "architect",
+      "business_logic_level": "office_runtime",
+      "notes": "Reusable Marp build wrapper for PPTX/PDF generation."
+    },
+    "shared/tools/mcp_docx_server.py": {
+      "class": "domain_shared",
+      "status": "active",
+      "owner": "architect",
+      "business_logic_level": "office_runtime",
+      "notes": "Word MCP runtime server."
+    },
+    "shared/tools/mcp_pptx_server.py": {
+      "class": "domain_shared",
+      "status": "active",
+      "owner": "architect",
+      "business_logic_level": "office_runtime",
+      "notes": "PowerPoint MCP runtime server."
+    },
+    "shared/tools/mcp_xlsx_server.py": {
+      "class": "domain_shared",
+      "status": "active",
+      "owner": "architect",
+      "business_logic_level": "office_runtime",
+      "notes": "Excel MCP runtime server."
+    },
+    "shared/tools/md_to_sqlite.py": {
+      "class": "domain_shared",
+      "status": "active",
+      "owner": "architect",
+      "business_logic_level": "knowledge_ingest",
+      "notes": "Reusable Markdown-to-SQLite ingestion helper."
+    },
+    "shared/tools/mermaid_render.py": {
+      "class": "domain_shared",
+      "status": "active",
+      "owner": "architect",
+      "business_logic_level": "shared_helper",
+      "notes": "Diagram rendering helper."
+    },
+    "shared/tools/mes_report.py": {
+      "class": "domain_shared",
+      "status": "active",
+      "owner": "architect",
+      "business_logic_level": "domain_runtime",
+      "notes": "MES report download utility with reusable operational logic."
+    },
+    "shared/tools/migrate_to_vec0.py": {
+      "class": "maintenance",
+      "status": "maintenance_only",
+      "owner": "architect",
+      "business_logic_level": "migration",
+      "notes": "Migration script; not part of day-to-day runtime."
+    },
+    "shared/tools/office_validator.py": {
+      "class": "core_shared",
+      "status": "active",
+      "owner": "architect",
+      "business_logic_level": "quality_gate",
+      "notes": "Canonical Office output validator."
+    },
+    "shared/tools/pdf_to_markdown.py": {
+      "class": "domain_shared",
+      "status": "active",
+      "owner": "architect",
+      "business_logic_level": "document_ingest",
+      "notes": "General PDF to Markdown conversion helper."
+    },
+    "shared/tools/pptx_panjit.py": {
+      "class": "domain_shared",
+      "status": "active",
+      "owner": "architect",
+      "business_logic_level": "office_runtime",
+      "notes": "Company-brand PPT generation library with durable business logic."
+    },
+    "shared/tools/pretool_guard.py": {
+      "class": "core_shared",
+      "status": "active",
+      "owner": "architect",
+      "business_logic_level": "runtime_guard",
+      "notes": "Hard guard on dangerous or contract-breaking command use."
+    },
+    "shared/tools/process_kb_query.py": {
+      "class": "domain_shared",
+      "status": "active",
+      "owner": "architect",
+      "business_logic_level": "knowledge_query",
+      "notes": "Process-analysis KB query helper with reusable cross-table logic."
+    },
+    "shared/tools/promotion_state.py": {
+      "class": "domain_shared",
+      "status": "active",
+      "owner": "architect",
+      "business_logic_level": "workflow_state",
+      "notes": "Promotion queue and evaluation-state helper."
+    },
+    "shared/tools/recalc.py": {
+      "class": "domain_shared",
+      "status": "active",
+      "owner": "architect",
+      "business_logic_level": "office_runtime",
+      "notes": "Reusable Excel recalculation helper."
+    },
+    "shared/tools/scheduled_check.py": {
+      "class": "maintenance",
+      "status": "maintenance_only",
+      "owner": "architect",
+      "business_logic_level": "governance",
+      "notes": "Scheduled health-check helper, not a business runtime primitive."
+    },
+    "shared/tools/session_start_hook.py": {
+      "class": "core_shared",
+      "status": "active",
+      "owner": "architect",
+      "business_logic_level": "runtime_guard",
+      "notes": "Session-start reminder hook."
+    },
+    "shared/tools/semantic_relation_extractor.py": {
+      "class": "maintenance",
+      "status": "active",
+      "owner": "architect",
+      "business_logic_level": "governance",
+      "notes": "Remote api-gpt oss runner for semantic capability relation suggestions."
+    },
+    "shared/tools/semantic_relation_review.py": {
+      "class": "maintenance",
+      "status": "active",
+      "owner": "architect",
+      "business_logic_level": "governance",
+      "notes": "Review and apply semantic relation suggestions before writing them into capability_registry.json."
+    },
+    "shared/tools/skill_usage_tracker.py": {
+      "class": "core_shared",
+      "status": "active",
+      "owner": "architect",
+      "business_logic_level": "runtime_telemetry",
+      "notes": "Tracks SKILL reads into KB metadata."
+    },
+    "shared/tools/sync_agent_rules.py": {
+      "class": "core_shared",
+      "status": "active",
+      "owner": "architect",
+      "business_logic_level": "governance",
+      "notes": "Synchronizes skill rules into agent surfaces."
+    },
+    "shared/tools/system_audit.py": {
+      "class": "maintenance",
+      "status": "maintenance_only",
+      "owner": "architect",
+      "business_logic_level": "governance",
+      "notes": "Structural audit for agent/skill/workflow consistency."
+    },
+    "shared/tools/tool_audit.py": {
+      "class": "maintenance",
+      "status": "maintenance_only",
+      "owner": "architect",
+      "business_logic_level": "governance",
+      "notes": "Tool governance audit over shared/tools and tool_manifest.json."
+    },
+    "shared/tools/write_guard.py": {
+      "class": "core_shared",
+      "status": "active",
+      "owner": "architect",
+      "business_logic_level": "runtime_guard",
+      "notes": "Guards governed definition writes."
+    },
+    "shared/tools/agent_coverage.py": {
+      "class": "maintenance",
+      "status": "maintenance_only",
+      "owner": "architect",
+      "business_logic_level": "governance",
+      "notes": "Coverage reporting for sub-agent activation and memory scaffolding."
+    },
+    "shared/tools/capability_audit.py": {
+      "class": "maintenance",
+      "status": "maintenance_only",
+      "owner": "architect",
+      "business_logic_level": "governance",
+      "notes": "Capability registry audit over shared/registry/capability_registry.json."
+    },
+    "shared/tools/capability_registry.py": {
+      "class": "maintenance",
+      "status": "maintenance_only",
+      "owner": "architect",
+      "business_logic_level": "governance",
+      "notes": "SQLite query surface and sync utility for shared/registry/capability_registry.json."
+    }
+  }
+}

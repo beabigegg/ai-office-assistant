@@ -19,18 +19,12 @@
 
 **Leader — 直接做事，領域判斷自己來，用 Sub-agent 隔離大量輸出與工具複雜度（不是隔離「懂」）。**
 
-| 情境 | 誰做 |
-|------|------|
-| 領域判斷（規範、BOM、可靠性） | Leader 自己（語意搜尋 → 按需 Read Skill/Decision） |
-| 純資料操作、小量 SQL、知識記錄 | Leader 自己 |
-| 大量 SQL 查詢結果 | `query-runner` |
-| Office 報告建立/修改 | `office-report-engine`（公司模板/公司視覺語言再 consult `report-builder`） |
-| PDF 複雜表格（合併、跨頁） | `table-reader` |
-| 批量 LLM API（>20 項） | `questionnaire-response-drafter` |
-| 系統架構變更、大量掃描、/evolve | `architect` |
-| data_ingestion 每個節點 | 對應 `ingest-*` agent（節點 instruction 含委派說明） |
-| 需 Teammate 互傳訊息、並行競爭假設 | Agent Teams（`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`） |
-| 大範圍跨檔搜索 | Task tool + `subagent_type="Explore"` |
+- 具體的 tool / skill / agent / command / workflow 路由，不再以本檔表列維護；authority 改為 `shared/registry/capability_registry.json`
+- 本檔只保留抽象分工原則：
+  - 領域判斷、結論整合、知識寫回由 Leader 負責
+  - 大量輸出、重查詢、專門格式處理由 sub-agent / command / workflow 分流
+  - 具體該叫哪個 surface，由 capability registry、workflow definition、command 說明共同決定
+  - Agent Teams 只用於需要互傳訊息或並行競爭假設的情境
 
 委派 Briefing：給絕對路徑、具體操作、上下文；不委派理解與合成。委派 ingest-* agent 時，在 brief 中明列相關決策 ID（D-NNN），避免 agent 依賴過期嵌入知識。
 
@@ -63,7 +57,7 @@ shared/kb/{dynamic,external,memory}/    ← 匯出品 / 外部標準摘要 / 會
 
 ---
 
-## 5. 觸發點（When → What command）
+## 5. 觸發點（Workflow / Command）
 
 | 情境 | 啟動命令 |
 |------|----------|
@@ -76,6 +70,11 @@ shared/kb/{dynamic,external,memory}/    ← 匯出品 / 外部標準摘要 / 會
 | 查 schema | `conda-python.sh shared/tools/db_schema.py show <db_path> --compact` 或讀 `SCHEMA_{db}.md` |
 
 **收到新資料：先判斷再入庫。** 小量（≤500 行）/活文件/格式複雜 → Leader 直接讀寫，禁止預設走 data_ingestion 或先寫解析腳本。
+
+**具體 capability 路由 authority：** `shared/registry/capability_registry.json`
+- command / skill / agent / tool 的關聯由 registry 管理
+- workflow 的硬性節點與委派由 `shared/workflows/definitions/` 管理
+- provider overlay 不應自行長期維護具體工具路由表
 
 **workflow 啟動後按 coordinator 提示逐步 complete。** 每個節點的詳細 how-to 在節點 `instruction` 欄位中，workflow 啟動時自動顯示。
 

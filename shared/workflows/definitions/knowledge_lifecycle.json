@@ -38,10 +38,22 @@
       "validator_params": {}
     },
     {
+      "id": "sync_indexing_reminders",
+      "description": "Scan newly written KB entries for capability-related semantic relation follow-up reminders",
+      "instruction": "Run `bash shared/tools/conda-python.sh shared/tools/indexing_reminder.py sync-kb --entry-id <id1> --entry-id <id2> ...` using the exact `kb_entry_ids` produced by write_to_dynamic, then complete with `{\"indexing_reminders_synced\":true}`. kb.py already handles local embedding writes; this reminder step is only for capability-related semantic relation follow-up.",
+      "depends_on": ["sync_knowledge_index"],
+      "required": true,
+      "required_outputs": [
+        {"output_key": "indexing_reminders_synced", "description": "capability-related KB reminders scanned"}
+      ],
+      "validator": null,
+      "validator_params": {}
+    },
+    {
       "id": "check_promote_threshold",
       "description": "Check if dynamic KB has enough validated entries to suggest /promote",
       "instruction": "Count active learning entries whose meta_json confidence is `high`. Complete with `{\"active_high_count\": <int>, \"suggest_run_promote\": <bool>, \"reason\": \"<brief>\"}` where `suggest_run_promote` is true iff `active_high_count >= 5`.",
-      "depends_on": ["write_to_dynamic"],
+      "depends_on": ["sync_indexing_reminders"],
       "required": true,
       "required_outputs": [
         {"output_key": "active_high_count", "description": "active high-confidence learning count"},

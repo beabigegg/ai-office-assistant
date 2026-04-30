@@ -9,6 +9,7 @@
 """
 import json
 import math
+import os
 import struct
 import urllib.request
 import urllib.error
@@ -16,7 +17,7 @@ import ssl
 
 OLLAMA_URL = "http://localhost:11434/api/embed"
 MODEL = "qwen3-embedding:4b"
-_TIMEOUT = 30
+_TIMEOUT = float(os.environ.get("OLLAMA_EMBED_TIMEOUT_SEC", "30"))
 
 
 def is_ollama_available() -> bool:
