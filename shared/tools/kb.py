@@ -1023,8 +1023,8 @@ def cmd_export(args):
             index_path, _ = kb.generate_index()
         finally:
             kb.close()
-        print(f"Generated active summary -> {summary_path.relative_to(ROOT)}")
-        print(f"Generated KB index -> {index_path.relative_to(ROOT)}")
+        print(f"Generated active summary -> {Path(summary_path).relative_to(ROOT)}")
+        print(f"Generated KB index -> {Path(index_path).relative_to(ROOT)}")
 
 
 # ═══════════════════════════════════════════════════════════

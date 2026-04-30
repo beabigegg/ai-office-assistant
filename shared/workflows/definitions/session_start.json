@@ -17,7 +17,7 @@
     {
       "id": "load_active_context",
       "description": "Generate fresh project-scoped active_rules_summary, then Read it so the active D-NNN ruleset is in context for this session. Cost: ~3K tokens; benefit: prevents Tier-3 rewrites from drifting away from active decisions.",
-      "instruction": "(1) Run: bash shared/tools/conda-python.sh shared/tools/kb.py generate-summary --project {PROJECT_ID} --output projects/{PROJECT_ID}/workspace/.active_rules_summary.md  (2) Read projects/{PROJECT_ID}/workspace/.active_rules_summary.md  (3) Count active decisions in the file (D-NNN occurrences) and report to user as 'N active decisions loaded'. Complete with {\"summary_path\":\"projects/{PROJECT_ID}/workspace/.active_rules_summary.md\",\"active_decision_count\":N}.",
+      "instruction": "(1) Run: bash shared/tools/conda-python.sh shared/tools/kb.py generate-summary --project {PROJECT_ID} --output projects/{PROJECT_ID}/workspace/.active_rules_summary.md  (2) Read projects/{PROJECT_ID}/workspace/.active_rules_summary.md  (3) Count active decisions in the file (D-NNN occurrences) and report to user as 'N active decisions loaded'. Complete with {\"summary_path\":\"projects/{PROJECT_ID}/workspace/.active_rules_summary.md\",\"active_decision_count\":N}.\nIMPORTANT: After generate-summary completes, you MUST use the Read tool to read the generated .active_rules_summary.md file before calling complete. Include the first D-NNN decision ID found in the file as 'first_active_decision' in your complete outputs.",
       "depends_on": ["read_project_state"],
       "required": true,
       "required_outputs": [

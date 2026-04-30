@@ -84,6 +84,7 @@ shared/kb/{dynamic,external,memory}/    ← 匯出品 / 外部標準摘要 / 會
 
 - **SQL Schema-First**：寫 SQL 前必讀 `SCHEMA_{db}.md`（`analysis_report` 的 `load_schema` 節點強制）
 - **SQLite 為運算中心**：大量資料走 SQL，不塞 context window
+- **禁止 `2>/dev/null` 遮蔽工具錯誤**：對 `kb.py`、`process_kb_query.py`、`graph_query.py`、`coordinator.py` 等 AI Office 工具的呼叫，禁止附加 `2>/dev/null`。這些工具的 stderr 是診斷依據，遮蔽後無法判斷失敗原因。
 - **DB-First 知識**：不讀 .md 全文，一律 `kb.py read <ID>`
 - **KB CLI 不猜參數**：寫 learning 前先看 `bash shared/tools/conda-python.sh shared/tools/kb.py add-learning -h`。`--confidence` 只用 `high|medium|low`；不要把內部評分尺度 `0.90` 直接當 CLI 參數。
 - **檔案衛生**：暫存/散落/備份/空殼檔禁止留存（`check_hygiene` 節點掃描）

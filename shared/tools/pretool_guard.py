@@ -11,6 +11,11 @@ or string literals inside the command (e.g., commit messages).
 import json
 import re
 import sys
+import io
+try:
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace', line_buffering=True)
+except Exception:
+    pass
 
 
 FORBIDDEN_PATTERNS = [
