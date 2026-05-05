@@ -113,7 +113,8 @@
       "Bash([ ! -f \"$LOG\" ])",
       "mcp__claude_ai_Canva__create-design-from-candidate",
       "mcp__claude_ai_Canva__export-design",
-      "mcp__claude_ai_Canva__generate-design-structured"
+      "mcp__claude_ai_Canva__generate-design-structured",
+      "Bash(grep -E --line-buffered \"->|\\\\\\\\[A|\\\\\\\\[B|Done\\\\\\\\.|Error|Traceback|Killed|fail_df\")"
     ],
     "deny": [
       "Bash(powershell *)",

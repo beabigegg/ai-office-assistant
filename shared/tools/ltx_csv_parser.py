@@ -121,9 +121,10 @@ class LtxParser:
             fname_base = fname.rsplit('.', 1)[0]
 
         # 解析主要欄位
-        # LTX_BAS70SW-AU_R1_000A1-A_TXS-16167_GA25092280-A00-001_20251009054850
+        # LTX_BAS70SW-AU_R1_000A1-A_TXS-16167_GA25092280-A00-001_20251009054850        (TXS-: 晶片批號)
         # LTX_BAS70WS-AU_R1_000A1-A_TXS-16321_GA25112287-A00-003-01_20251203100513
-        m = re.match(r'LTX_(.+?)_(TXS-\d+)_(GA\d+)-([\w-]+)_(\d{10,})', fname_base)
+        # LTX_BCP56-16-AU_R2_007A1-1_TXTS-0553_GA26032188-A00-001_20260403212228       (TXTS-: 測試批，BCP56 TRA 系列)
+        m = re.match(r'LTX_(.+?)_(TXT?S-\d+)_(GA\d+)-([\w-]+)_(\d{10,})', fname_base)
         if m:
             info['device_type'] = m.group(1)
             info['tx_batch'] = m.group(2)
