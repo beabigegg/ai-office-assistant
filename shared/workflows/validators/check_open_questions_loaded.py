@@ -7,9 +7,16 @@ The sidecar reports both the count and a *classification* so that
 '(無)' / 'none' / 'no open questions' are normalised to count=0
 without the validator having to re-implement the placeholder list.
 """
+import sys as _sys
 from pathlib import Path
 
 from ._sidecar import read_sidecar, strict_require
+
+# Tool-name constants live in shared/tools/sidecar_tools.py.
+_TOOLS_DIR = str(Path(__file__).resolve().parent.parent.parent / "tools")
+if _TOOLS_DIR not in _sys.path:
+    _sys.path.insert(0, _TOOLS_DIR)
+from sidecar_tools import TOOL_KB_PROJECT_STATE_INDEX  # noqa: E402
 
 
 def validate(context: dict) -> tuple:
@@ -23,12 +30,12 @@ def validate(context: dict) -> tuple:
         f"--project {project or '<PROJECT_ID>'}"
     )
 
-    sc = read_sidecar(context, expected_tool="kb.py:project-state-index")
+    sc = read_sidecar(context, expected_tool=TOOL_KB_PROJECT_STATE_INDEX)
     ok, msg = strict_require(
         sc, context,
         node_name="flag_open_questions",
         regen_cmd=regen_cmd,
-        expected_tool="kb.py:project-state-index",
+        expected_tool=TOOL_KB_PROJECT_STATE_INDEX,
     )
     if not ok:
         return False, msg

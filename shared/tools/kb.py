@@ -178,12 +178,16 @@ def _classify_db_status(text: str) -> str:
     if not block:
         return "unknown"
     lower = block.lower()
-    # Hard signals of absence.
-    for marker in ("已刪除", "無 db", "無db", "(無)", "（無）", "尚未建立", "no database"):
-        if marker in block.lower() if marker.isascii() else marker in block:
+    # CJK markers — exact case match
+    for marker in ("已刪除", "尚未建立", "(無)", "（無）"):
+        if marker in block:
             return "deleted_or_absent"
-    # Any explicit .db path implies active.
-    if re.search(r"\.db\b", block, re.IGNORECASE):
+    # ASCII markers — case-insensitive
+    for marker in ("無 db", "無db", "no database"):
+        if marker in lower:
+            return "deleted_or_absent"
+    # Detect active DB paths
+    if re.search(r'[\w/\\]+\.db\b', block):
         return "active"
     return "unknown"
 
@@ -2130,13 +2134,14 @@ def cmd_generate_summary(args):
         # Sidecar (W1-1)
         sys.path.insert(0, str(SCRIPT_DIR))
         from sidecar import Sidecar  # local import to avoid load-time cost
+        from sidecar_tools import TOOL_KB_GENERATE_SUMMARY
 
         project = getattr(args, 'project', None)
         active_ids = stats.get('active_decision_ids', []) or []
         md_path = Path(path)
         sidecar_path = md_path.with_suffix('.json')
 
-        sc = Sidecar("kb.py:generate-summary", project=project)
+        sc = Sidecar(TOOL_KB_GENERATE_SUMMARY, project=project)
         sc.set_input("project", project)
         sc.set_input("output_path", str(md_path))
         sc.set_output("summary_path", str(md_path))
@@ -2342,9 +2347,10 @@ def cmd_generate_session_context(args):
 
     sys.path.insert(0, str(SCRIPT_DIR))
     from sidecar import Sidecar
+    from sidecar_tools import TOOL_KB_GENERATE_SESSION_CONTEXT
 
     sidecar_path = output_path.with_suffix(".json")
-    sc = Sidecar("kb.py:generate-session-context", project=project)
+    sc = Sidecar(TOOL_KB_GENERATE_SESSION_CONTEXT, project=project)
     sc.set_input("project_state_path", str(project_state_path))
     sc.set_input("max_decisions", max_decisions)
     sc.set_output("bundle_path", str(output_path))
@@ -2432,8 +2438,9 @@ def cmd_project_state_index(args):
     # Lazy import sidecar to avoid mandatory load at module init.
     sys.path.insert(0, str(SCRIPT_DIR))
     from sidecar import Sidecar
+    from sidecar_tools import TOOL_KB_PROJECT_STATE_INDEX
 
-    sc = Sidecar("kb.py:project-state-index", project=project)
+    sc = Sidecar(TOOL_KB_PROJECT_STATE_INDEX, project=project)
     sc.set_input("project_state_path", str(state_path))
     sc.set_output("current_phase", current_phase)
     sc.set_output("db_status", db_status)

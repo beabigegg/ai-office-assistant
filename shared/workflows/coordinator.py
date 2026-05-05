@@ -841,11 +841,19 @@ def _increment_counter(state: dict, workflow_name: str):
 
 
 def _is_engine_internal(node: dict) -> bool:
-    """True when a node's description starts with the [ENGINE-INTERNAL] marker.
+    """True when a node is handled internally by the coordinator engine.
 
-    The marker means the coordinator engine completes/handles the node itself;
-    Leaders MUST NOT call ``complete`` on it.
+    Canonical marker is the ``engine_internal: true`` JSON field on the
+    node definition. The legacy ``[ENGINE-INTERNAL]`` description-string
+    prefix is still accepted as a fallback for compatibility.
+
+    Engine-internal nodes are completed by the engine itself; Leaders
+    MUST NOT call ``complete`` on them.
     """
+    # Prefer explicit JSON field (canonical marker)
+    if node.get("engine_internal") is True:
+        return True
+    # Backward-compat: description string prefix fallback
     desc = (node.get("description") or "").strip()
     return desc.startswith("[ENGINE-INTERNAL]")
 

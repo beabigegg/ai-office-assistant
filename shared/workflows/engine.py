@@ -469,13 +469,26 @@ class WorkflowEngine:
         return False, f"[FAIL] Validator: {last_fail_msg}"
 
     def is_terminal_state(self) -> bool:
-        """Return True when all required nodes are completed."""
+        """Return True when all required, non-engine-internal nodes are completed.
+
+        Engine-internal nodes (marked by ``engine_internal: true`` or the
+        legacy ``[ENGINE-INTERNAL]`` description prefix) are completed by
+        the engine itself, so they must never block terminal state — even
+        when their ``required`` flag is true.
+        """
         nodes = self.instance_state.get('nodes', {})
-        return all(
-            nodes.get(n['id'], {}).get('status') == 'completed'
-            for n in self.definition['nodes']
-            if n.get('required', True)
-        )
+        for n in self.definition['nodes']:
+            if not n.get('required', True):
+                continue
+            # Skip engine-internal nodes — the engine handles them itself.
+            if n.get('engine_internal') is True:
+                continue
+            desc = (n.get('description') or '').strip()
+            if desc.startswith('[ENGINE-INTERNAL]'):
+                continue
+            if nodes.get(n['id'], {}).get('status') != 'completed':
+                return False
+        return True
 
     def archive_if_done(self) -> bool:
         """Check terminal state; if done, mark completed_at and return True."""

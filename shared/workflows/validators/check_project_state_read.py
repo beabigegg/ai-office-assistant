@@ -6,9 +6,16 @@ the file's sha256 matches what the indexer recorded — catches the case
 where the file was modified between indexing and node completion.
 """
 import hashlib
+import sys as _sys
 from pathlib import Path
 
 from ._sidecar import read_sidecar
+
+# Tool-name constants live in shared/tools/sidecar_tools.py.
+_TOOLS_DIR = str(Path(__file__).resolve().parent.parent.parent / "tools")
+if _TOOLS_DIR not in _sys.path:
+    _sys.path.insert(0, _TOOLS_DIR)
+from sidecar_tools import TOOL_KB_PROJECT_STATE_INDEX  # noqa: E402
 
 
 def _sha256(p: Path) -> str:
@@ -46,7 +53,7 @@ def validate(context: dict) -> tuple:
         return False, f"state_path must match active project workspace: {expected}"
 
     # Optional sidecar checksum cross-check.
-    sc = read_sidecar(context, expected_tool="kb.py:project-state-index")
+    sc = read_sidecar(context, expected_tool=TOOL_KB_PROJECT_STATE_INDEX)
     if sc is not None:
         checksums = sc.get("checksums") or {}
         expected_sha = checksums.get("markdown_sha256")

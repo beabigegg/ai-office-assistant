@@ -8,10 +8,17 @@ fresh, and contain the four canonical sections — the sidecar adds the
 semantic counts that no longer require regex parsing.
 """
 import hashlib
+import sys as _sys
 from datetime import datetime, timezone
 from pathlib import Path
 
 from ._sidecar import read_sidecar, strict_require
+
+# Tool-name constants live in shared/tools/sidecar_tools.py.
+_TOOLS_DIR = str(Path(__file__).resolve().parent.parent.parent / "tools")
+if _TOOLS_DIR not in _sys.path:
+    _sys.path.insert(0, _TOOLS_DIR)
+from sidecar_tools import TOOL_KB_GENERATE_SESSION_CONTEXT  # noqa: E402
 
 
 def _sha256(p: Path) -> str:
@@ -36,12 +43,12 @@ def validate(context: dict) -> tuple:
         f"--output projects/{project or '<PROJECT_ID>'}/workspace/.session_context_bundle.md"
     )
 
-    sc = read_sidecar(context, expected_tool="kb.py:generate-session-context")
+    sc = read_sidecar(context, expected_tool=TOOL_KB_GENERATE_SESSION_CONTEXT)
     ok, msg = strict_require(
         sc, context,
         node_name="build_session_context",
         regen_cmd=regen_cmd,
-        expected_tool="kb.py:generate-session-context",
+        expected_tool=TOOL_KB_GENERATE_SESSION_CONTEXT,
     )
     if not ok:
         return False, msg

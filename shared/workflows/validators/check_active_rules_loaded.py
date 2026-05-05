@@ -13,10 +13,18 @@ Checks:
   4. The Leader-reported active_decision_count (if any) matches the
      sidecar's authoritative count.
 """
+import sys as _sys
 from datetime import datetime, timezone
 from pathlib import Path
 
 from ._sidecar import read_sidecar, strict_require
+
+# Tool-name constants live in shared/tools/sidecar_tools.py.
+# validators/  -> workflows/  -> shared/  + /tools
+_TOOLS_DIR = str(Path(__file__).resolve().parent.parent.parent / "tools")
+if _TOOLS_DIR not in _sys.path:
+    _sys.path.insert(0, _TOOLS_DIR)
+from sidecar_tools import TOOL_KB_GENERATE_SUMMARY  # noqa: E402
 
 
 def _sha256(p: Path) -> str:
@@ -43,12 +51,12 @@ def validate(context: dict) -> tuple:
         f"--output projects/{project or '<PROJECT_ID>'}/workspace/.active_rules_summary.md"
     )
 
-    sc = read_sidecar(context, expected_tool="kb.py:generate-summary")
+    sc = read_sidecar(context, expected_tool=TOOL_KB_GENERATE_SUMMARY)
     ok, msg = strict_require(
         sc, context,
         node_name="load_active_context",
         regen_cmd=regen_cmd,
-        expected_tool="kb.py:generate-summary",
+        expected_tool=TOOL_KB_GENERATE_SUMMARY,
     )
     if not ok:
         return False, msg
