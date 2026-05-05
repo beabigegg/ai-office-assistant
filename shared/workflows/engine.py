@@ -70,12 +70,38 @@ def _log_runtime(event: str, **payload):
 
 # ─── Validator Loader ────────────────────────────────────────────────────────
 
+def _ensure_validators_package() -> str:
+    """Register VALIDATORS_DIR as a real package so validators can use
+    relative imports (e.g. ``from ._sidecar import ...``).
+
+    Returns the package name used (``ai_office_validators``)."""
+    import sys
+    pkg_name = 'ai_office_validators'
+    if pkg_name in sys.modules:
+        return pkg_name
+    pkg_spec = importlib.util.spec_from_file_location(
+        pkg_name,
+        str(VALIDATORS_DIR / '__init__.py'),
+        submodule_search_locations=[str(VALIDATORS_DIR)],
+    )
+    pkg = importlib.util.module_from_spec(pkg_spec)
+    # Avoid trying to exec a non-existent __init__.py.
+    sys.modules[pkg_name] = pkg
+    return pkg_name
+
+
 def _load_validator(name: str):
     path = VALIDATORS_DIR / f'{name}.py'
     if not path.exists():
         return None
-    spec = importlib.util.spec_from_file_location(name, str(path))
+    pkg_name = _ensure_validators_package()
+    full_name = f'{pkg_name}.{name}'
+    spec = importlib.util.spec_from_file_location(full_name, str(path))
     mod = importlib.util.module_from_spec(spec)
+    # Important for relative imports (`from ._sidecar import ...`).
+    mod.__package__ = pkg_name
+    import sys
+    sys.modules[full_name] = mod
     spec.loader.exec_module(mod)
     return getattr(mod, 'validate', None)
 

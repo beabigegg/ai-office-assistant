@@ -5,7 +5,7 @@
     {
       "id": "read_project_state",
       "description": "Read {PROJECT_ROOT}/workspace/project_state.md to restore session context",
-      "instruction": "Read `{PROJECT_ROOT}/workspace/project_state.md`. Confirm project type from first line (`<!-- type: knowledge|project_management -->`). Set `{PROJECT_ID}` for this session. Complete with `{\"state_path\":\"projects/{PROJECT_ID}/workspace/project_state.md\"}` and summarize to user: 當前階段, 活躍任務 count, 未解問題 count, 資料庫現況.",
+      "instruction": "Read `{PROJECT_ROOT}/workspace/project_state.md`. Confirm project type from first line (`<!-- type: knowledge|project_management -->`). Set `{PROJECT_ID}` for this session. Summarize to user: 當前階段, 活躍任務 count, 未解問題 count, 資料庫現況. Then run: bash shared/tools/conda-python.sh shared/tools/kb.py project-state-index --project {PROJECT_ID}  (this writes projects/{PROJECT_ID}/workspace/.project_state.json — the sidecar that flag_open_questions and downstream nodes will read). Complete with: coordinator.py complete read_project_state --outputs '{\"state_path\":\"projects/{PROJECT_ID}/workspace/project_state.md\"}' --sidecar projects/{PROJECT_ID}/workspace/.project_state.json",
       "depends_on": [],
       "required": true,
       "required_outputs": [
@@ -17,12 +17,12 @@
     {
       "id": "load_active_context",
       "description": "Generate fresh project-scoped active_rules_summary, then Read it so the active D-NNN ruleset is in context for this session. Cost: ~3K tokens; benefit: prevents Tier-3 rewrites from drifting away from active decisions.",
-      "instruction": "(1) Run: bash shared/tools/conda-python.sh shared/tools/kb.py generate-summary --project {PROJECT_ID} --output projects/{PROJECT_ID}/workspace/.active_rules_summary.md  (2) Read projects/{PROJECT_ID}/workspace/.active_rules_summary.md  (3) Count active decisions in the file (D-NNN occurrences) and report to user as 'N active decisions loaded'. Complete with {\"summary_path\":\"projects/{PROJECT_ID}/workspace/.active_rules_summary.md\",\"active_decision_count\":N}.\nIMPORTANT: After generate-summary completes, you MUST use the Read tool to read the generated .active_rules_summary.md file before calling complete. Include the first D-NNN decision ID found in the file as 'first_active_decision' in your complete outputs.",
+      "instruction": "(1) Run: bash shared/tools/conda-python.sh shared/tools/kb.py generate-summary --project {PROJECT_ID} --output projects/{PROJECT_ID}/workspace/.active_rules_summary.md  (2) Note the 'Sidecar: ...json' line printed to stdout — that is the authoritative count source.  (3) Use the Read tool on projects/{PROJECT_ID}/workspace/.active_rules_summary.md so the rules enter your context.  (4) Complete: coordinator.py complete load_active_context --sidecar projects/{PROJECT_ID}/workspace/.active_rules_summary.json\n\nDo NOT count D-NNN tokens in the file — the validator reads active_decision_count directly from the sidecar. If you also pass --outputs, your active_decision_count must agree exactly with the sidecar's value.",
       "depends_on": ["read_project_state"],
       "required": true,
       "required_outputs": [
         {"output_key": "summary_path", "description": "path to generated active_rules_summary"},
-        {"output_key": "active_decision_count", "description": "number of active D-NNN entries loaded"}
+        {"output_key": "active_decision_count", "description": "number of active D-NNN entries (sidecar-authoritative)"}
       ],
       "validator": "check_active_rules_loaded",
       "validator_params": {"max_age_seconds": 600}
@@ -60,11 +60,11 @@
     {
       "id": "flag_open_questions",
       "description": "Identify and flag open questions from project_state.md",
-      "instruction": "Read '## 未解問題' section from project_state.md. If project_management type, also run: bash shared/tools/conda-python.sh shared/tools/backlog.py --project {PROJECT_ID} list --status blocked. Count unresolved items and summarize them explicitly. Complete with {\"open_question_count\":N,\"open_questions_summary\":\"...\"}. If none, use count 0 and summary '(none)'.",
+      "instruction": "Read the .project_state.json sidecar produced in read_project_state. Its outputs.open_question_count and outputs.open_question_classification are AUTHORITATIVE — do NOT recount by hand. When open_question_classification is 'placeholder', 'empty', or 'missing', the count is 0 regardless of the .md file's body text (e.g. '（無）', '(none)', etc. are all normalised to 0).\n\nFor project_management projects, also run: bash shared/tools/conda-python.sh shared/tools/backlog.py --project {PROJECT_ID} list --status blocked.\n\nComplete: coordinator.py complete flag_open_questions --outputs '{\"open_question_count\":N,\"open_questions_summary\":\"...\"}' --sidecar projects/{PROJECT_ID}/workspace/.project_state.json\n\n(N must equal the sidecar count; summary must say '(none)' when N=0.)",
       "depends_on": ["read_project_state"],
       "required": true,
       "required_outputs": [
-        {"output_key": "open_question_count", "description": "number of open questions loaded"},
+        {"output_key": "open_question_count", "description": "number of open questions (sidecar-authoritative)"},
         {"output_key": "open_questions_summary", "description": "summary of open questions or explicit none marker"}
       ],
       "validator": "check_open_questions_loaded",
@@ -73,7 +73,7 @@
     {
       "id": "build_session_context",
       "description": "Generate a project-scoped session context bundle that combines active decisions, recent learnings, and open questions for this session.",
-      "instruction": "(1) Run: bash shared/tools/conda-python.sh shared/tools/kb.py generate-session-context --project {PROJECT_ID} --output projects/{PROJECT_ID}/workspace/.session_context_bundle.md (2) Read the generated bundle (3) Report its counts to user. Complete with {\"bundle_path\":\"projects/{PROJECT_ID}/workspace/.session_context_bundle.md\",\"bundle_decision_count\":N,\"bundle_learning_count\":M,\"bundle_open_question_count\":Q}.",
+      "instruction": "(1) Run: bash shared/tools/conda-python.sh shared/tools/kb.py generate-session-context --project {PROJECT_ID} --output projects/{PROJECT_ID}/workspace/.session_context_bundle.md  (2) Note the 'Sidecar: ...' line from stdout.  (3) Read the generated bundle and surface its counts to the user.  (4) Complete: coordinator.py complete build_session_context --sidecar projects/{PROJECT_ID}/workspace/.session_context_bundle.json\n\nIf you pass --outputs with bundle_*_count fields, they must match the sidecar exactly (sidecar is authoritative).",
       "depends_on": ["load_active_context", "flag_open_questions"],
       "required": true,
       "required_outputs": [
@@ -88,7 +88,7 @@
     {
       "id": "report_ready",
       "description": "Report session ready status to user with context summary",
-      "instruction": "Report in 3-5 bullet points: project type + {PROJECT_ID}, 當前階段, active decision count, open question count, KB health status, DB status. If open questions exist, explicitly surface them as risk. End with: 就緒，等待指示。 Complete with {\"ready_summary\":\"...\",\"risk_status\":\"clear|open_questions|mixed\",\"context_bundle_path\":\"projects/{PROJECT_ID}/workspace/.session_context_bundle.md\",\"reported_open_question_count\":Q}.",
+      "instruction": "Report in 3-5 bullet points: project type + {PROJECT_ID}, 當前階段, active decision count, open question count, KB health status, DB status. If open questions exist, explicitly surface them as risk. End with: 就緒，等待指示。 Complete with {\"ready_summary\":\"...\",\"risk_status\":\"clear|open_questions|mixed\",\"context_bundle_path\":\"projects/{PROJECT_ID}/workspace/.session_context_bundle.md\",\"reported_open_question_count\":Q}.\n\nValidator constraints (must match exactly, else FAIL):\n- reported_open_question_count MUST equal the sidecar count from flag_open_questions (the validator pulls this from .project_state.json automatically)\n- context_bundle_path MUST equal build_session_context's sidecar bundle_path\n- risk_status='clear'          requires count == 0\n- risk_status='open_questions' requires count > 0\n- risk_status='mixed'          allowed when there is an additional risk surface beyond open questions",
       "depends_on": ["build_session_context"],
       "required": true,
       "required_outputs": [

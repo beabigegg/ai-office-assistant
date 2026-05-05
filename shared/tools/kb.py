@@ -96,16 +96,46 @@ def _extract_markdown_section(text: str, heading: str) -> str:
     return match.group(1).strip() if match else ""
 
 
+_OPEN_QUESTION_NONE_MARKERS = frozenset({
+    "（無）", "(無)", "無", "暫無", "目前無", "目前無未解問題",
+    "（目前無）", "(目前無)", "（目前無未解問題）", "(目前無未解問題)",
+    "none", "(none)", "no open questions", "n/a", "na",
+    "目前沒有", "暫時無", "無未解問題", "（無未解問題）", "(無未解問題)",
+})
+
+
+def _is_open_question_placeholder(line: str) -> bool:
+    """True when ``line`` is one of the recognised 'no open questions' markers."""
+    if not line:
+        return False
+    stripped = line.strip()
+    # Strip a leading bullet/number marker before comparing.
+    stripped = re.sub(r"^[-*]\s+", "", stripped)
+    stripped = re.sub(r"^\d+\.\s+", "", stripped)
+    return stripped.lower() in _OPEN_QUESTION_NONE_MARKERS or stripped in _OPEN_QUESTION_NONE_MARKERS
+
+
 def _parse_open_question_lines(text: str) -> list[str]:
+    """Parse the '## 未解問題' section.
+
+    Empty list means *no* open questions. Recognises:
+      * an explicit ``<!-- open_questions: none -->`` HTML hint anywhere
+        in the section,
+      * any of the placeholder strings in ``_OPEN_QUESTION_NONE_MARKERS``,
+      * a section that is entirely missing or empty.
+    """
     block = _extract_markdown_section(text, "## 未解問題")
     if not block:
+        return []
+    # Explicit machine hint wins.
+    if re.search(r"<!--\s*open_questions\s*:\s*none\s*-->", block, re.IGNORECASE):
         return []
     lines = []
     for raw_line in block.splitlines():
         line = raw_line.strip()
         if not line or line.startswith("<!--"):
             continue
-        if "（無）" in line or line.lower() in {"none", "(none)"}:
+        if _is_open_question_placeholder(line):
             return []
         if re.match(r"^[-*]\s+", line):
             lines.append(re.sub(r"^[-*]\s+", "", line))
@@ -115,6 +145,47 @@ def _parse_open_question_lines(text: str) -> list[str]:
             continue
         lines.append(line)
     return lines
+
+
+def _classify_open_questions(text: str) -> str:
+    """Classify the open-questions section.
+
+    Returns one of:
+      * ``"missing"``  — no '## 未解問題' heading at all
+      * ``"empty"``    — heading present but no body lines
+      * ``"placeholder"`` — heading present, body is a 'no open questions' marker
+      * ``"present"``  — at least one real open question
+    """
+    block = _extract_markdown_section(text, "## 未解問題")
+    if not block:
+        return "missing"
+    if re.search(r"<!--\s*open_questions\s*:\s*none\s*-->", block, re.IGNORECASE):
+        return "placeholder"
+    has_any_text = False
+    for raw_line in block.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("<!--"):
+            continue
+        has_any_text = True
+        if _is_open_question_placeholder(line):
+            return "placeholder"
+    return "present" if has_any_text else "empty"
+
+
+def _classify_db_status(text: str) -> str:
+    """Inspect '## 資料庫現況' and bucket into deleted_or_absent | active | unknown."""
+    block = _extract_markdown_section(text, "## 資料庫現況")
+    if not block:
+        return "unknown"
+    lower = block.lower()
+    # Hard signals of absence.
+    for marker in ("已刪除", "無 db", "無db", "(無)", "（無）", "尚未建立", "no database"):
+        if marker in block.lower() if marker.isascii() else marker in block:
+            return "deleted_or_absent"
+    # Any explicit .db path implies active.
+    if re.search(r"\.db\b", block, re.IGNORECASE):
+        return "active"
+    return "unknown"
 
 
 def _project_state_path(project: str) -> Path:
@@ -2037,7 +2108,12 @@ def cmd_sync(args):
 
 
 def cmd_generate_summary(args):
-    """Generate active_rules_summary.md from DB (EVO-016)."""
+    """Generate active_rules_summary.md from DB (EVO-016).
+
+    Also writes a JSON sidecar next to the .md (same stem, .json) so
+    downstream validators can read semantic counts/IDs without
+    regex-parsing the rendered Markdown.
+    """
     KBIndex = _get_kb_index()
     kb = KBIndex()
     try:
@@ -2050,6 +2126,33 @@ def cmd_generate_summary(args):
         print(f"  Superseded: {stats['superseded_decisions']}")
         print(f"  Active rules: {stats['active_rules']}")
         print(f"  Output size: {stats['output_size']} chars")
+
+        # Sidecar (W1-1)
+        sys.path.insert(0, str(SCRIPT_DIR))
+        from sidecar import Sidecar  # local import to avoid load-time cost
+
+        project = getattr(args, 'project', None)
+        active_ids = stats.get('active_decision_ids', []) or []
+        md_path = Path(path)
+        sidecar_path = md_path.with_suffix('.json')
+
+        sc = Sidecar("kb.py:generate-summary", project=project)
+        sc.set_input("project", project)
+        sc.set_input("output_path", str(md_path))
+        sc.set_output("summary_path", str(md_path))
+        sc.set_output("active_decision_count", stats['active_decisions'])
+        sc.set_output(
+            "first_active_decision",
+            active_ids[0] if active_ids else None,
+        )
+        sc.set_output("active_decision_ids", active_ids)
+        sc.set_output("active_rule_ids", stats.get('active_rule_ids', []) or [])
+        sc.set_stat("active_decisions", stats['active_decisions'])
+        sc.set_stat("superseded_decisions", stats.get('superseded_decisions', 0))
+        sc.set_stat("active_rules", stats.get('active_rules', 0))
+        sc.set_stat("output_size", stats.get('output_size', 0))
+        sc.write(sidecar_path, paired_md=md_path)
+        print(sc.stdout_hint())
     finally:
         kb.close()
 
@@ -2233,6 +2336,29 @@ def cmd_generate_session_context(args):
     print(f"  Open questions: {len(open_questions)}")
     print(f"  Active rules: {len(rule_rows)}")
 
+    # Sidecar (W1-4)
+    open_q_classification = _classify_open_questions(project_state_text)
+    is_placeholder = open_q_classification in ("placeholder", "empty", "missing")
+
+    sys.path.insert(0, str(SCRIPT_DIR))
+    from sidecar import Sidecar
+
+    sidecar_path = output_path.with_suffix(".json")
+    sc = Sidecar("kb.py:generate-session-context", project=project)
+    sc.set_input("project_state_path", str(project_state_path))
+    sc.set_input("max_decisions", max_decisions)
+    sc.set_output("bundle_path", str(output_path))
+    sc.set_output("bundle_open_question_count", len(open_questions))
+    sc.set_output("open_question_placeholder_detected", is_placeholder)
+    sc.set_output("open_question_classification", open_q_classification)
+    sc.set_output("open_questions_normalized", open_questions)
+    sc.set_output("active_decision_count", len(decision_rows))
+    sc.set_output("active_decision_ids", [r["id"] for r in decision_rows])
+    sc.set_output("recent_learning_count", len(learning_rows))
+    sc.set_output("active_rule_count", len(rule_rows))
+    sc.write(sidecar_path, paired_md=output_path)
+    print(sc.stdout_hint())
+
 
 def cmd_generate_index(args):
     """Generate shared/kb/_index.md (EVO-016)."""
@@ -2250,6 +2376,83 @@ def cmd_generate_index(args):
         print(f"  Output size: {stats['output_size']} chars")
     finally:
         kb.close()
+
+
+def cmd_project_state_index(args):
+    """Index project_state.md and emit a sidecar JSON (W1-2).
+
+    Parses the four sections downstream validators care about:
+      * ## 當前階段        -> outputs.current_phase
+      * ## 資料庫現況      -> outputs.db_status
+      * ## 未解問題        -> outputs.open_question_count
+                              outputs.open_question_classification
+                              outputs.open_questions
+      * ## 主要產出        -> outputs.outputs_summary
+
+    Writes ``projects/<project>/workspace/.project_state.json``.
+    """
+    project = _normalize_kb_project(getattr(args, "project", None))
+    if not project:
+        print("ERROR: --project is required", file=sys.stderr)
+        sys.exit(1)
+
+    state_path = _project_state_path(project)
+    if not state_path.exists():
+        print(f"ERROR: project_state.md not found: {state_path}", file=sys.stderr)
+        sys.exit(1)
+
+    text = state_path.read_text(encoding="utf-8")
+
+    phase_block = _extract_markdown_section(text, "## 當前階段")
+    current_phase = ""
+    for raw in phase_block.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("<!--"):
+            continue
+        current_phase = re.sub(r"^[-*]\s+", "", line)
+        break
+
+    db_status = _classify_db_status(text)
+    open_questions = _parse_open_question_lines(text)
+    open_q_classification = _classify_open_questions(text)
+
+    outputs_block = _extract_markdown_section(text, "## 主要產出")
+    outputs_summary: list[str] = []
+    for raw in outputs_block.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("<!--"):
+            continue
+        m = re.match(r"^[-*]\s+(.*)$", line)
+        if m:
+            outputs_summary.append(m.group(1).strip())
+
+    # Output path
+    sidecar_path = state_path.parent / ".project_state.json"
+
+    # Lazy import sidecar to avoid mandatory load at module init.
+    sys.path.insert(0, str(SCRIPT_DIR))
+    from sidecar import Sidecar
+
+    sc = Sidecar("kb.py:project-state-index", project=project)
+    sc.set_input("project_state_path", str(state_path))
+    sc.set_output("current_phase", current_phase)
+    sc.set_output("db_status", db_status)
+    sc.set_output("open_question_count", len(open_questions))
+    sc.set_output("open_question_classification", open_q_classification)
+    sc.set_output("open_questions", open_questions)
+    sc.set_output("outputs_summary", outputs_summary)
+    sc.set_stat("outputs_summary_count", len(outputs_summary))
+    sc.write(sidecar_path, paired_md=state_path)
+
+    print(f"Project-state index: {sidecar_path}")
+    print(f"  current_phase: {current_phase or '(none)'}")
+    print(f"  db_status: {db_status}")
+    print(
+        f"  open_questions: {len(open_questions)} "
+        f"(classification={open_q_classification})"
+    )
+    print(f"  outputs_summary: {len(outputs_summary)} items")
+    print(sc.stdout_hint())
 
 
 def cmd_check_conflict(args):
@@ -2422,6 +2625,13 @@ def main():
     p_cc.add_argument('target', type=str)
     p_cc.add_argument('--threshold', type=float, default=0.4)
 
+    # W1-2: project_state.md sidecar indexer
+    p_psi = sub.add_parser(
+        'project-state-index',
+        help='Parse project_state.md and emit .project_state.json sidecar (W1-2).',
+    )
+    p_psi.add_argument('--project', type=str, required=True)
+
     args = parser.parse_args()
     cmd_map = {
         'catalog': cmd_catalog,
@@ -2447,6 +2657,7 @@ def main():
         'generate-session-context': cmd_generate_session_context,
         'generate-index': cmd_generate_index,
         'check-conflict': cmd_check_conflict,
+        'project-state-index': cmd_project_state_index,
     }
     fn = cmd_map.get(args.command)
     if fn:

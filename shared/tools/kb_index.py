@@ -1269,6 +1269,9 @@ class KBIndex:
             'active_rules': len(rules),
             'output_path': str(output_path),
             'output_size': len(content),
+            # Sidecar consumers (validators) need the actual IDs, not just counts.
+            'active_decision_ids': [d['id'] for d in decisions],
+            'active_rule_ids': [r['id'] for r in rules],
         }
         return str(output_path), stats
 
