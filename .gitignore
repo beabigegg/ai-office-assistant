@@ -165,6 +165,11 @@ ai-officeprojects_templateworkspace*
 # === Workflow runtime state ===
 shared/workflows/state/
 
+# === Sidecar handshake artifacts (machine-generated, regenerable) ===
+projects/*/workspace/.*.json
+shared/kb/.tx/
+shared/kb/.*.json
+
 # === Capability registry runtime artifacts ===
 shared/registry/*.db
 shared/registry/semantic_relation_payload*.json

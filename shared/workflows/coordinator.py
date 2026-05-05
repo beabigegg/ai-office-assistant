@@ -210,7 +210,12 @@ def _usage_text() -> str:
         "Commands:\n"
         "  start <workflow_name> [--context '{...}'] [--script <path>]\n"
         "  complete <node_id> [--instance <id>|--session <id>] "
-        "[--outputs '{...}'|--artifacts '{...}'] [--script <path>]\n"
+        "[--outputs '{...}'|--artifacts '{...}'] [--sidecar <path>] [--script <path>]\n"
+        "    --sidecar  Path to a JSON file produced by an upstream tool "
+        "(see shared/tools/sidecar.py).\n"
+        "               Its 'outputs' map is merged into node outputs; existing keys "
+        "in --outputs win.\n"
+        "               The path itself is also injected as 'outputs._sidecar_path'.\n"
         "  list\n"
         "  status [instance_id]\n"
         "  show <instance_id>\n"
@@ -220,6 +225,31 @@ def _usage_text() -> str:
         "  force_close [--instance <id>] --approved-by-user --reason \"...\"\n"
         "  help [command]\n"
     )
+
+
+def _load_sidecar_outputs(sidecar_path: str) -> tuple[dict, str | None]:
+    """Read a sidecar JSON and return (outputs_dict, error_message).
+
+    On success returns (outputs, None). On failure returns ({}, message).
+    """
+    p = Path(sidecar_path)
+    if not p.is_absolute():
+        p = (ROOT / p).resolve()
+    if not p.exists():
+        return {}, f"[ERROR] --sidecar file not found: {p}"
+    try:
+        data = json.loads(p.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as e:
+        return {}, f"[ERROR] --sidecar file is not valid JSON ({p}): {e}"
+    sc_outputs = data.get("outputs")
+    if sc_outputs is None:
+        sc_outputs = {}
+    elif not isinstance(sc_outputs, dict):
+        return {}, (
+            f"[ERROR] --sidecar 'outputs' must be an object, got "
+            f"{type(sc_outputs).__name__} ({p})"
+        )
+    return {"_outputs": sc_outputs, "_path": str(p)}, None
 
 
 # ─── State Management ───────────────────────────────────────────────
@@ -1077,13 +1107,14 @@ def main():
         if len(sys.argv) < 3:
             print(
                 "Usage: coordinator.py complete <node_id> [--instance <id>|--session <id>] "
-                "[--outputs '{...}'|--artifacts '{...}'] [--script <path>]"
+                "[--outputs '{...}'|--artifacts '{...}'] [--sidecar <path>] [--script <path>]"
             )
             sys.exit(1)
         node_id = sys.argv[2]
         outputs = {}
         inst_id = None
         script_path = None
+        sidecar_path = None
         if '--outputs' in sys.argv:
             idx = sys.argv.index('--outputs')
             if idx + 1 < len(sys.argv):
@@ -1102,6 +1133,20 @@ def main():
                     sys.exit(1)
                 if isinstance(artifact_outputs, dict):
                     outputs.update(artifact_outputs)
+        if '--sidecar' in sys.argv:
+            idx = sys.argv.index('--sidecar')
+            if idx + 1 < len(sys.argv):
+                sidecar_path = sys.argv[idx + 1]
+                loaded, err = _load_sidecar_outputs(sidecar_path)
+                if err:
+                    print(err)
+                    sys.exit(1)
+                # Merge: explicit --outputs / --artifacts win over sidecar
+                merged = dict(loaded["_outputs"])
+                merged.update(outputs)
+                outputs = merged
+                # Always inject the sidecar path so validators can find it
+                outputs["_sidecar_path"] = loaded["_path"]
         if '--instance' in sys.argv:
             idx = sys.argv.index('--instance')
             if idx + 1 < len(sys.argv):
