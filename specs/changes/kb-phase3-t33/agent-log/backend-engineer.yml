@@ -1,0 +1,45 @@
+agent: backend-engineer
+change_id: kb-phase3-t33
+status: done
+date: "2026-05-05"
+
+summary: >
+  Implemented Phase 3 T3.3 — added `source TEXT DEFAULT 'manual'` and `confidence REAL`
+  columns to the `edges` table. Updated all edge INSERT sites in kb.py and kb_index.py
+  to label each row with the correct provenance value (manual / regex / semantic).
+  Added idempotent backfill in both _ensure_schema and _ensure_phase1_cols to fix
+  pre-existing rows that received the DEFAULT 'manual' after ALTER TABLE.
+
+artifacts:
+  - { type: files-changed, pointer: "shared/tools/kb.py:296-316 (_ensure_schema T3.3 migration + backfill)" }
+  - { type: files-changed, pointer: "shared/tools/kb.py:483-488 (_process_edge_queue — source='semantic', confidence=sim)" }
+  - { type: files-changed, pointer: "shared/tools/kb.py:996-997 (cmd_add_decision supersedes — source='manual')" }
+  - { type: files-changed, pointer: "shared/tools/kb.py:1059 (cmd_add_learning references — source='manual')" }
+  - { type: files-changed, pointer: "shared/tools/kb.py:1102-1103 (cmd_update superseded_by/supersedes — source='manual')" }
+  - { type: files-changed, pointer: "shared/tools/kb.py:1441-1491 (cmd_build_edges refs_skill/refs_db/affects/cited_by_skill — source='regex')" }
+  - { type: files-changed, pointer: "shared/tools/kb.py:1597 (cmd_add_edge — source='manual')" }
+  - { type: files-changed, pointer: "shared/tools/kb.py:2003-2005 (tool graph imports — source='regex')" }
+  - { type: files-changed, pointer: "shared/tools/kb_index.py:266-283 (_ensure_phase1_cols T3.3 migration + backfill)" }
+  - { type: files-changed, pointer: "shared/tools/kb_index.py:351-354 (sync() main edge upsert — source from edge_source key, default 'regex')" }
+  - { type: files-changed, pointer: "shared/tools/kb_index.py:391-394 (sync() skill_edges upsert — source from edge_source key, default 'regex')" }
+  - { type: files-changed, pointer: "shared/kb/knowledge_graph/kb_schema.sql:39-41 (Phase 3 T3.3 doc comment)" }
+  - { type: tests-added, pointer: "n/a (no separate test file required; verification script embedded in task spec ran inline — all PASS)" }
+  - type: test-output
+    pointer: |
+      edges.source exists: PASS
+      edges.confidence exists: PASS
+      NULL source edges: 0 (expect 0) PASS
+        source=manual: 776
+        source=regex: 211
+        source=semantic: 112
+      total edges: 1099
+      source distribution non-NULL: PASS
+  - { type: contracts-touched, pointer: "shared/kb/knowledge_graph/kb_schema.sql:39-41 (schema comment updated)" }
+
+notes:
+  - Existing semantic edges (auto_generated=1) inserted before T3.3 have confidence=NULL
+    because similarity values were not stored; backfill cannot reconstruct them without
+    re-running embedding similarity computation.
+  - The edge_source dict key (vs. 'source') avoids collision with the graph source_id field
+    in the edge dict used by kb_index.py parsers.
+  - All 1099 edges in the live DB now have a non-NULL source value after backfill.

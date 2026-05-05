@@ -1,0 +1,147 @@
+agent: backend-engineer
+change_id: KB-P1
+date: 2026-05-05
+status: done
+
+summary: |
+  Implemented KB System Phase 1 (T1.1–T1.4): schema extension, parser backfill,
+  embedding version tagging, retry logic, embed_failed_log table, and embed-stats CLI command.
+
+artifacts:
+  - { type: files-changed, pointer: "d:/ai-office/shared/tools/kb.py:256-299,2495-2517,2662-2663,2695-2696" }
+  - { type: files-changed, pointer: "d:/ai-office/shared/tools/kb_index.py:15,182-224,271-292,380-404,553-570,657-669,720-860" }
+  - { type: files-changed, pointer: "d:/ai-office/shared/kb/knowledge_graph/kb_schema.sql:39-72" }
+  - { type: tests-added, pointer: "n/a (no spec test-plan.md; verifications run inline per task spec)" }
+  - { type: test-output, pointer: |
+      T1.1: PASS
+      T1.2: PASS (full_text populated: 736/1153)
+      T1.3: PASS (EMBED_VERSION: v2-target-summary-fulltext500, node_embeddings.embed_version: True, embed_text len=382)
+      T1.4: PASS (Coverage: 692/1066 (64%), Failed nodes (logged): 0, embed_failed_log exists: True) }
+  - { type: contracts-touched, pointer: "n/a (no API contract files; internal DB schema change only)" }
+
+tasks:
+  T1.1:
+    status: PASS
+    changes:
+      - kb.py::_ensure_schema — added full_text, confidence, embed_version, subtype, legacy_id ALTER TABLE guards
+      - kb_index.py::_init_schema — added call to _ensure_phase1_cols after executescript
+      - kb_index.py::_ensure_phase1_cols — new method; migrates nodes + node_embeddings + embed_failed_log idempotently
+      - kb_schema.sql — appended Phase 1 comment block
+
+  T1.2:
+    status: PASS
+    changes:
+      - kb_index.py::_parse_decisions — node dict gains full_text/confidence/subtype; kb-context meta parsed
+      - kb_index.py::_parse_rules — node dict gains full_text/confidence/subtype
+      - kb_index.py::_parse_learning — node dict gains full_text/confidence/subtype
+      - kb_index.py::sync — main INSERT SQL expanded to 14 cols; ON CONFLICT updates new cols
+      - kb_index.py::_auto_supersede_in_md — INSERT SQL expanded to 14 cols; ON CONFLICT updates new cols
+
+  T1.3:
+    status: PASS
+    changes:
+      - kb_index.py — EMBED_VERSION = 'v2-target-summary-fulltext500' constant added at module level
+      - kb_index.py::sync_embeddings — SELECT includes full_text; embed_text built from target+summary+full_text[:500]
+      - kb_index.py::sync_embeddings — skip condition checks embed_version match; INSERT/UPDATE includes embed_version
+      - kb_index.py::sync_embeddings — writes embed_version back to nodes after successful embed
+      - kb_index.py::_ensure_phase1_cols — migrates node_embeddings.embed_version at init time
+
+  T1.4:
+    status: PASS
+    changes:
+      - kb_index.py — _embed_with_retry module-level helper with exponential backoff (max 3 retries)
+      - kb_index.py::sync_embeddings — uses _embed_with_retry; logs failures to embed_failed_log; removes hard-stop at 5 errors
+      - kb_schema.sql — embed_failed_log CREATE TABLE + index appended
+      - kb_index.py::_ensure_phase1_cols — CREATE TABLE IF NOT EXISTS embed_failed_log (idempotent)
+      - kb.py::_ensure_schema — CREATE TABLE IF NOT EXISTS embed_failed_log + node_embeddings.embed_version migration
+      - kb.py::cmd_embed_stats — new command: Coverage/Failed/by-version output
+      - kb.py::main — subparser 'embed-stats' added; cmd_map entry added
+
+known_risks:
+  - _parse_column_semantics not updated with full_text (CS-* nodes have null full_text); by design since spec only listed decision/rule/learning parsers
+  - legacy_id column added to nodes schema but not populated; will be used in Phase 2 T2.1
+  - embed_failed_log.attempt_no is always stored as 3 (max_retries constant); dynamic tracking not required by spec
+
+qa_fix_2026-05-05:
+  status: done
+  summary: |
+    Three QA-feedback fixes applied to KB Phase 1 implementation.
+
+  artifacts:
+    - { type: files-changed, pointer: "d:/ai-office/shared/tools/kb_index.py:197" }
+    - { type: files-changed, pointer: "d:/ai-office/shared/tools/kb.py:2524-2537" }
+    - { type: tests-added, pointer: "n/a (fixes verified inline via bash validation commands per task spec)" }
+    - { type: test-output, pointer: |
+        broad except: PASS
+        Coverage: 691/1066 (64%)
+        Failed nodes (logged): 0
+          v1-pre-phase1: 691
+          unversioned: 375
+        sync: OK }
+    - { type: contracts-touched, pointer: "n/a (no API contract files affected; internal DB data backfill only)" }
+
+  fixes:
+    P0:
+      file: shared/tools/kb_index.py
+      line: 197
+      change: "except (ConnectionError, RuntimeError) as e: → except Exception as e:"
+      rationale: TimeoutError/OSError/URLError from Ollama not caught; broad catch prevents crash and allows embed_failed_log to record failures
+      result: PASS
+
+    P1:
+      file: shared/tools/kb.py
+      lines: 2524-2537
+      change: "by_version query removed IS NOT NULL filter; added status='active' and ORDER BY COUNT(*) DESC; output guarded with if/else"
+      rationale: Old query excluded NULL embed_version rows, so version breakdown always empty before any versioned embed run
+      result: PASS (v1-pre-phase1: 691, unversioned: 375)
+
+    P2:
+      scope: data — one-off SQL backfill on kb_index.db
+      change: "UPDATE node_embeddings SET embed_version='v1-pre-phase1' WHERE embed_version IS NULL; same for nodes"
+      rows_updated: 705
+      rationale: Pre-Phase-1 embeddings had NULL embed_version; next sync would have re-embedded all 705 rows unnecessarily
+      result: PASS
+
+phase2_T2.3_T2.4_2026-05-05:
+  status: done
+  summary: |
+    Implemented KB Phase 2 T2.3 (skill nodes) and T2.4 (kb-edges meta + schema doc).
+    23 SKILL-* nodes from .claude/skills-on-demand/ now indexed in DB with cited_by_skill edges.
+    _parse_decisions() now handles <!-- kb-edges: refines/contradicts/extends/depends_on --> annotations.
+    decision_meta_schema.yaml extended with kb_edges_meta and kb_context_meta sections.
+
+  artifacts:
+    - { type: files-changed, pointer: "d:/ai-office/shared/tools/kb_index.py (T2.3: _parse_skills method ~740-820; sync skill block ~357-385; T2.4: kb-edges parsing in _parse_decisions ~548-562)" }
+    - { type: files-changed, pointer: "d:/ai-office/shared/kb/knowledge_graph/decision_meta_schema.yaml:74-92" }
+    - { type: tests-added, pointer: "T2.3 inline bash: skill_cnt=23 PASS, cited_by_skill=27; T2.4 inline python: id=D-998 PASS, confidence=high PASS, refines=D-001 PASS, contradicts=D-002 PASS" }
+    - { type: test-output, pointer: |
+        skill nodes: 23 → PASS
+          ('SKILL-automotive-reliability-standards', 'automotive-reliability-standards', '汽車電子可靠性測試的通用標準層查詢入口...')
+          ('SKILL-batch-refactor', 'batch-refactor', '大量重複性修改任務的兩階段模式...')
+          ('SKILL-bom-rules', 'bom-rules', 'BOM 結構規則與替代材料識別...')
+        cited_by_skill edges: 27
+          id=D-998: PASS
+          confidence=high from kb-context: PASS
+          refines=D-001: PASS
+          contradicts=D-002: PASS }
+    - { type: contracts-touched, pointer: "d:/ai-office/shared/kb/knowledge_graph/decision_meta_schema.yaml (kb_edges_meta + kb_context_meta sections added)" }
+
+  tasks:
+    T2.3:
+      status: PASS
+      changes:
+        - kb_index.py::_parse_skills — new method; scans ROOT/.claude/skills-on-demand/*/; reads .skill.yaml (description→summary, category→subtype, confidence) and SKILL.md (full_text, summary fallback); emits SKILL-{name} nodes with node_type='skill', project='shared'; emits cited_by_skill edges for D-NNN refs in SKILL.md
+        - kb_index.py::sync — T2.3 block added after main parser loop commit; calls _parse_skills(); upserts skill nodes with 15-column INSERT ... ON CONFLICT; inserts cited_by_skill edges; accumulates total_nodes/total_edges
+      result: "23 skill nodes, 27 cited_by_skill edges in DB"
+
+    T2.4:
+      status: PASS
+      changes:
+        - kb_index.py::_parse_decisions — added kb-edges block after kb-context block; regex searches <!-- kb-edges: ... -->; calls _parse_meta(); iterates refines/contradicts/extends/depends_on; appends edge dicts with explicit relation
+        - decision_meta_schema.yaml — appended kb_edges_meta (tag, supported_relations, value_format, example) and kb_context_meta (tag, fields, example) sections
+      result: "all 4 checks PASS on test D-998 block"
+
+  known_risks:
+    - _parse_skills skips dirs starting with '_' or '.'; _skill_template is excluded (intended)
+    - confidence from .skill.yaml is stored as-is (e.g. 'very high'); kb-context validation expects high|medium|low; no normalisation done (not required by spec)
+    - cited_by_skill edges may point to D-NNN IDs not yet in DB if SKILL.md references unreleased decisions; INSERT OR IGNORE on edges table handles this gracefully

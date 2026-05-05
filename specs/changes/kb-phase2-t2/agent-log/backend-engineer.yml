@@ -1,0 +1,48 @@
+agent: backend-engineer
+model: claude-sonnet-4-6
+change_id: kb-phase2-t2
+date: 2026-05-05
+status: complete
+
+summary: |
+  Implemented T2.1 (learning ID hash stabilization) and T2.2 (edge orphan cleanup).
+  Modified kb_index.py to generate LRN-{SHA1[:8]} IDs for learning nodes, added
+  legacy_id tracking, and built migration script m001_learning_id_hash.py.
+  Migration successfully processed 512 ECR-L* nodes (383 deleted as sync already
+  created LRN-* equivalents, 129 renamed in-place). All ECR-L* edges (658) migrated.
+  Post-migration: 0 ECR-L* nodes, 0 orphan edges, kb validate exit 0.
+
+tasks_completed:
+  - T2.1: _parse_learning() now generates LRN-{SHA1[:8].upper()} IDs with legacy_id
+  - T2.1: sync() INSERT includes legacy_id column and ON CONFLICT update
+  - T2.1: _learning_legacy_map property added to KBIndex for lazy-load legacy map
+  - T2.1: m001_learning_id_hash.py migration script created and executed
+  - T2.2: _parse_decisions() updated to resolve ECR-L refs via legacy map to LRN-*
+  - T2.2: orphan edge count = 0 after migration
+  - T2.2: kb validate exit code = 0
+
+artifacts:
+  - { type: files-changed, pointer: "shared/tools/kb_index.py:16 (hashlib import)" }
+  - { type: files-changed, pointer: "shared/tools/kb_index.py:268-280 (_learning_legacy_map property)" }
+  - { type: files-changed, pointer: "shared/tools/kb_index.py:718-735 (_parse_learning hash ID generation)" }
+  - { type: files-changed, pointer: "shared/tools/kb_index.py:312-335 (sync INSERT legacy_id)" }
+  - { type: files-changed, pointer: "shared/tools/kb_index.py:642-648 (_parse_decisions ECR-L resolver)" }
+  - { type: files-changed, pointer: "shared/tools/migrations/m001_learning_id_hash.py:1-160" }
+  - { type: tests-added, pointer: "n/a (no test-plan.md found in specs/changes/kb-phase2-t2/; validation done via inline DB queries)" }
+  - { type: test-output, pointer: "ECR-L* remaining: 0 → PASS; LRN-* nodes: 641; legacy_id mapped: 641 → PASS; orphan edges (ECR-L*): 0 → PASS; validate exit code: 0" }
+  - { type: contracts-touched, pointer: "none (DB schema unchanged; legacy_id column was already added in Phase 1)" }
+
+known_risks:
+  - |
+    641 LRN-* nodes > 512 in MD: the 129 extra come from non-ECR-L learning nodes
+    (DXF-L*, EA-L*, BOM-L* etc.) that already had LRN-* IDs from a prior sync.
+    These are correct — only the ECR-L* sequential IDs were unstable.
+  - |
+    Hash is computed from DB target field (truncated to 80 chars), not raw MD title.
+    Future re-sync uses raw MD title (also 80 chars). If a title changes the LRN-* ID
+    will change. This is expected behaviour — content-addressed stability.
+  - |
+    The _learning_legacy_map property reads learning_id_legacy_map.json at runtime.
+    If the JSON file is deleted, ECR-L* refs in decisions.md will not resolve to
+    LRN-* but will be stored as ECR-L* edge targets (which are now orphaned).
+    Mitigation: keep learning_id_legacy_map.json in VCS or regenerate via dry-run.

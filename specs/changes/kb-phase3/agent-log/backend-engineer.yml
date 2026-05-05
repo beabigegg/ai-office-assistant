@@ -1,0 +1,58 @@
+agent: backend-engineer
+change_id: kb-phase3
+task: T3.1 (FTS5 node_fts virtual table) + T3.2 (RRF Hybrid Search in related_semantic)
+status: complete
+date: 2026-05-05
+
+summary: |
+  T3.1: Added _ensure_fts_schema() and _rebuild_fts() helpers to kb.py.
+  FTS5 virtual table node_fts uses trigram tokenizer (unicode61 fallback).
+  cmd_sync now calls _rebuild_fts(kb.conn) after sync, keeping index current.
+  kb_schema.sql updated with comment noting runtime-only FTS table.
+
+  T3.2: Added _bm25_search() method and rewrote related_semantic() in kb_index.py
+  to use Reciprocal Rank Fusion (RRF, k=60) over dense cosine + BM25 legs.
+  Dense leg gracefully absent when Ollama unavailable; BM25-only RRF still runs.
+  Total fallback to LIKE-based related() when both legs produce no results.
+
+artifacts:
+  - { type: files-changed, pointer: "shared/tools/kb.py:299-356 (_ensure_fts_schema, _rebuild_fts)" }
+  - { type: files-changed, pointer: "shared/tools/kb.py:2194-2210 (cmd_sync with _rebuild_fts hook)" }
+  - { type: files-changed, pointer: "shared/tools/kb_index.py:1040-1103 (_bm25_search + related_semantic rewrite)" }
+  - { type: files-changed, pointer: "shared/kb/knowledge_graph/kb_schema.sql:65-69 (FTS3 T3.1 comment)" }
+  - { type: tests-added, pointer: "n/a (no test-plan.md found under specs/changes/kb-phase3; validated via inline verification scripts below)" }
+  - type: test-output
+    pointer: |
+      T3.1 inline verify (last 10 lines):
+        node_fts exists: PASS
+        FTS rows: 1204 vs active nodes: 1204 -> PASS
+        BOM search: 3 hits -> PASS
+        Chinese search (替代材料): 3 hits -> PASS
+      T3.2 inline verify (last 10 lines):
+        _bm25_search result count: 5
+        top hit: LRN-89D87A66 rank=-3.1793
+        related_semantic: 5 lines, rrf= scores present, d=none (BM25-only), no crash
+        fmt=ids and fmt=full confirmed working
+        DONE
+  - { type: contracts-touched, pointer: "n/a (internal search API, no external contract change)" }
+
+verification:
+  T3.1_node_fts_exists: PASS
+  T3.1_fts_row_count_matches_active: PASS (1204 == 1204)
+  T3.1_bom_search: PASS (3 hits)
+  T3.1_chinese_trigram_search: PASS (3 hits for 替代材料)
+  T3.2_bm25_search: PASS (5 results, top hit LRN-89D87A66 rank=-3.18)
+  T3.2_related_semantic_hybrid: PASS (rrf= scores, d=none/b= labels, no crash)
+  T3.2_graceful_fallback_no_ollama: PASS (BM25-only path executed, no exception)
+
+known_risks:
+  - FTS index is rebuilt wholesale on every sync (DELETE + INSERT). For the current
+    ~1200 active nodes this is fast (<1s). If the corpus grows to 10k+ nodes,
+    consider incremental update via AFTER INSERT/UPDATE/DELETE triggers on nodes table.
+  - Trigram tokenizer requires SQLite >= 3.35 (bundled with Python 3.9+). The
+    unicode61 fallback handles older environments but loses CJK substring matching.
+  - Dense leg is skipped entirely when Ollama is down; RRF then runs BM25-only.
+    Callers that relied on the old cosine sim= output format will see rrf= instead —
+    minor display change but not a breaking contract change (no external consumers).
+
+next_reviewer: qa-reviewer

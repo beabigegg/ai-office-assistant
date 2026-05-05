@@ -1,0 +1,76 @@
+agent: backend-engineer
+change_id: kb-phase4
+task: T4.1 (edge_proposals table) + T4.2 (edge_extractor.py + extract-edges CLI) + T4.3 (review-edges CLI)
+status: complete
+date: 2026-05-05
+
+summary: |
+  T4.1: Added edge_proposals staging table + 2 indexes to _ensure_schema() in kb.py (idempotent
+  CREATE TABLE IF NOT EXISTS). Also updated kb_schema.sql with the DDL as documentation.
+  The table enforces EVO-013 sidecar principle: LLM proposals never go directly to edges.
+
+  T4.2: Created shared/tools/edge_extractor.py. Iterates active decision/learning nodes,
+  sanitizes node_text for FTS5 MATCH (ASCII-only tokens to avoid CJK punctuation syntax errors),
+  calls gpt-oss API (Ollama/OpenAI-compatible), writes non-"none" relations to edge_proposals.
+  Resumable by checking existing source_ids for the extractor version. 3s serial delay (no
+  concurrency per feedback_api_concurrency.md). Added cmd_extract_edges to kb.py + subparser.
+
+  T4.3: Added cmd_review_edges to kb.py. Supports interactive mode (stdin) and non-interactive
+  auto-approve-threshold mode. Approved proposals are written to edges table with auto_generated=0,
+  and edge_proposals.status updated to approved/rejected. Added subparser + cmd_map entry.
+
+  Bug fixed during implementation: RELATION_PROMPT used .format() with literal {braces} in
+  JSON example -- escaped to {{ }} to avoid KeyError. _sanitize_fts_query() added to handle
+  FTS5 syntax errors from mixed CJK+ASCII text (= signs, full-width punctuation).
+
+artifacts:
+  - { type: files-changed, pointer: "shared/tools/kb.py:307-327 (edge_proposals table + indexes in _ensure_schema)" }
+  - { type: files-changed, pointer: "shared/tools/kb.py:2645-2732 (cmd_extract_edges + cmd_review_edges)" }
+  - { type: files-changed, pointer: "shared/tools/kb.py:2927-2942 (extract-edges + review-edges subparsers)" }
+  - { type: files-changed, pointer: "shared/tools/kb.py:2957-2960 (cmd_map entries for phase 4)" }
+  - { type: files-changed, pointer: "shared/tools/edge_extractor.py:1-196 (new file, full)" }
+  - { type: files-changed, pointer: "shared/kb/knowledge_graph/kb_schema.sql:75-93 (edge_proposals DDL comment)" }
+  - { type: tests-added, pointer: "n/a (no test-plan.md; validated via inline scripts per T4.1/T4.2/T4.3 spec)" }
+  - type: test-output
+    pointer: |
+      T4.1 inline verify:
+        edge_proposals: PASS
+        idx_status: PASS
+        idx_source: PASS
+      T4.2 dry-run (--batch-size 3):
+        [DRY-RUN] D-001 -> ECR-R9 (would call gpt-oss)
+        [DRY-RUN] D-002 -> ECR-R14 (would call gpt-oss)
+        Batch limit reached (3 nodes).
+        Processed: 3 source nodes | Proposals written: 0
+        Done: 3 nodes processed, 0 proposals written.
+      T4.3 auto-approve verify:
+        #1 conf=0.95 [references] extractor=test-v0
+        [auto-approve, conf>=0.90]
+        Done: 1 approved, 0 rejected, 0 skipped.
+        approved proposals: 1
+        edges from test: 1 -> PASS
+  - { type: contracts-touched, pointer: "n/a (new internal tables/commands, no external API contract change)" }
+
+verification:
+  T4.1_edge_proposals_table: PASS
+  T4.1_idx_edge_proposals_status: PASS
+  T4.1_idx_edge_proposals_source: PASS
+  T4.2_dry_run_no_crash: PASS
+  T4.2_extract_edges_cli: PASS (3 nodes processed, DRY-RUN lines printed)
+  T4.3_review_edges_auto_approve: PASS
+  T4.3_approved_written_to_edges: PASS (edges WHERE source='test-v0' count=1)
+
+known_risks:
+  - FTS sanitizer strips all non-ASCII word chars. For purely CJK nodes with no ASCII
+    terms, safe.strip() will be empty and _bm25_neighbors returns []. These nodes produce
+    no proposals. A future improvement: extract CJK trigrams directly as FTS5 MATCH terms.
+  - gpt-oss serial 3s delay means 768 nodes * 5 neighbors = ~3840 LLM calls ~3.2 hours.
+    The --batch-size arg allows partial runs; resumable design prevents re-processing.
+  - review-edges uses INSERT OR REPLACE INTO edges which overwrites confidence/source on
+    duplicate (source_id, target_id, relation). This is intentional but may clobber
+    manually curated edges if LLM proposes the same relation.
+  - edge_proposals UNIQUE constraint is on (source_id, target_id, relation, extractor).
+    Different extractor versions can create duplicate semantic edges; build-edges dedup
+    logic does not yet account for edge_proposals-sourced edges.
+
+next_reviewer: qa-reviewer
