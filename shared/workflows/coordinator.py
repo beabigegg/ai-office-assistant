@@ -511,7 +511,16 @@ def complete(node_id: str, outputs: dict = None, instance_id: str = None, script
             if h.get("workflow"):
                 try:
                     defn_check = _load_definition(h["workflow"])
-                    if any(n["id"] == node_id for n in defn_check["nodes"]):
+                    target_node = next(
+                        (n for n in defn_check["nodes"] if n["id"] == node_id),
+                        None,
+                    )
+                    if target_node is not None:
+                        if _is_engine_internal(target_node):
+                            return True, (
+                                f"[INFO] Node '{node_id}' is engine-internal "
+                                "and is handled automatically. No action required."
+                            )
                         return False, (
                             f"[ERROR] No active workflow contains node '{node_id}' "
                             "(workflow already completed and archived)"
@@ -519,6 +528,18 @@ def complete(node_id: str, outputs: dict = None, instance_id: str = None, script
                 except (FileNotFoundError, KeyError):
                     pass
         return False, f"[ERROR] No active workflow contains node '{node_id}'"
+
+    # Even if the workflow is still active, refuse to validate ENGINE-INTERNAL
+    # nodes — return [INFO] so the caller knows nothing was done.
+    target_def = next(
+        (n for n in inst["definition"]["nodes"] if n["id"] == node_id),
+        None,
+    )
+    if target_def is not None and _is_engine_internal(target_def):
+        return True, (
+            f"[INFO] Node '{node_id}' is engine-internal and is handled "
+            "automatically. No action required."
+        )
 
     # Delegate to engine
     engine = WorkflowEngine.from_instance(inst, state)
@@ -819,12 +840,28 @@ def _increment_counter(state: dict, workflow_name: str):
     state["counters"][workflow_name] = state["counters"].get(workflow_name, 0) + 1
 
 
+def _is_engine_internal(node: dict) -> bool:
+    """True when a node's description starts with the [ENGINE-INTERNAL] marker.
+
+    The marker means the coordinator engine completes/handles the node itself;
+    Leaders MUST NOT call ``complete`` on it.
+    """
+    desc = (node.get("description") or "").strip()
+    return desc.startswith("[ENGINE-INTERNAL]")
+
+
 def _next_node_hints(defn_nodes: list, nodes_state: dict, instance_id: str = None, project: str = "...") -> str:
-    """Return instruction text for all READY nodes that have an 'instruction' field."""
+    """Return instruction text for all READY nodes that have an 'instruction' field.
+
+    Skips nodes flagged ``[ENGINE-INTERNAL]`` so we never invite the Leader to
+    call ``complete`` on a node only the engine should touch.
+    """
     lines = []
     for node in defn_nodes:
         nid = node["id"]
         if nodes_state.get(nid, {}).get("status") == "ready":
+            if _is_engine_internal(node):
+                continue
             instr = node.get("instruction", "").strip()
             delegate_to = node.get("delegate_to")
             delegate_hint = node.get("delegate_hint", "").strip()

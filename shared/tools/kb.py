@@ -2510,7 +2510,12 @@ def main():
     p_dec.add_argument('--date', required=True)
     p_dec.add_argument('--project', required=True)
     p_dec.add_argument('--target', required=True)
-    p_dec.add_argument('--question', required=True)
+    p_dec.add_argument(
+        '--question', '--title',
+        dest='question',
+        required=True,
+        help="Decision question / framing (--title is accepted as alias).",
+    )
     p_dec.add_argument('--decision', required=True)
     p_dec.add_argument('--impact', required=True)
     p_dec.add_argument('--status', default='active')

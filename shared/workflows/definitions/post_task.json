@@ -17,7 +17,7 @@
     {
       "id": "record_decisions",
       "description": "Check decisions.md for new entries with D-NNN format, ensure sequential numbering",
-      "instruction": "If this task created new durable decisions, get the next DB id via `bash shared/tools/conda-python.sh shared/tools/kb.py next-id`, write each one with `kb.py add-decision`, then complete with `{\"decision_ids\":[\"D-201\",\"D-202\"]}`. If no new decisions were made, complete with `{\"skipped\":true}`.",
+      "instruction": "If this task created new durable decisions, get the next DB id via `bash shared/tools/conda-python.sh shared/tools/kb.py next-id`, write each one with `kb.py add-decision`, then complete with `{\"decision_ids\":[\"D-201\",\"D-202\"]}`. If no new decisions were made, complete with `{\"skipped\":true}`.\n\nReference — working add-decision command:\n  bash shared/tools/conda-python.sh shared/tools/kb.py add-decision \\\n    --id D-NNN --date YYYY-MM-DD --project <PROJECT_ID> \\\n    --target <target> --question '...' --decision '...' --impact '...'\nNote: --title is also accepted as alias for --question.\nAfter adding, verify with: kb.py catalog --project <PROJECT_ID>\nDo NOT pass both --title and --question (they share the same dest).",
       "depends_on": ["update_project_state"],
       "required": true,
       "required_outputs": [
@@ -98,7 +98,7 @@
     {
       "id": "sync_indexing_reminders",
       "description": "Scan newly written KB entries for capability-related semantic relation follow-up reminders",
-      "instruction": "If this round added `decision_ids` or `learning_ids`, run `bash shared/tools/conda-python.sh shared/tools/indexing_reminder.py sync-kb --entry-id <id1> --entry-id <id2> ...` for all newly written KB ids, then complete with `{\"indexing_reminders_synced\":true}`. This does NOT replace kb.py local embedding writes; it only queues capability-related entries for remote semantic relation extraction follow-up. If no new KB entries were added, complete with `{\"skipped\":true}`.",
+      "instruction": "If this round added `decision_ids` or `learning_ids`, run `bash shared/tools/conda-python.sh shared/tools/indexing_reminder.py sync-kb --entry-id <id1> --entry-id <id2> ...` for all newly written KB ids, then complete with `{\"indexing_reminders_synced\":true}`. This does NOT replace kb.py local embedding writes; it only queues capability-related entries for remote semantic relation extraction follow-up. If no new KB entries were added, complete with `{\"skipped\":true}`.\n\nSTOP: This is the last required node of post_task. After completing this node, the workflow will be archived automatically. Do NOT attempt to complete `scan_promotion_candidates` — it will report ENGINE-INTERNAL (the engine handles it) and will fail with 'workflow already completed' once the workflow is archived.",
       "depends_on": ["refresh_kb_exports"],
       "required": true,
       "required_outputs": [
@@ -110,8 +110,8 @@
     },
     {
       "id": "scan_promotion_candidates",
-      "description": "自動掃描成熟 learning 候選並寫入升級佇列",
-      "instruction": "Informational node only. The actual scan runs in coordinator's Python completion block (not here) and writes results to promotion_queue.json. This optional node is auto-skipped by the engine. The validator check_promotion_candidates runs as a secondary consistency check when explicitly invoked; it does NOT auto-complete this node.",
+      "description": "[ENGINE-INTERNAL] 自動掃描成熟 learning 候選並寫入升級佇列",
+      "instruction": "DO NOT call `complete scan_promotion_candidates`. This node is handled internally by the coordinator engine at archive time. Calling complete on it will fail with 'workflow already completed' because the workflow is archived as soon as sync_indexing_reminders finishes.",
       "depends_on": ["sync_indexing_reminders"],
       "required": false,
       "required_outputs": [],
