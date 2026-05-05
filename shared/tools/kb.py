@@ -262,6 +262,136 @@ def _ensure_schema(conn):
     if 'meta_json' not in cols:
         conn.execute("ALTER TABLE nodes ADD COLUMN meta_json TEXT")
         conn.commit()
+    if 'full_text' not in cols:
+        conn.execute("ALTER TABLE nodes ADD COLUMN full_text TEXT")
+    if 'confidence' not in cols:
+        conn.execute("ALTER TABLE nodes ADD COLUMN confidence TEXT")
+    if 'embed_version' not in cols:
+        conn.execute("ALTER TABLE nodes ADD COLUMN embed_version TEXT")
+    if 'subtype' not in cols:
+        conn.execute("ALTER TABLE nodes ADD COLUMN subtype TEXT")
+    if 'legacy_id' not in cols:
+        conn.execute("ALTER TABLE nodes ADD COLUMN legacy_id TEXT")
+    # Ensure node_embeddings.embed_version exists
+    ne_exists = conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='node_embeddings'"
+    ).fetchone()
+    if ne_exists:
+        ne_cols = {row[1] for row in conn.execute("PRAGMA table_info(node_embeddings)").fetchall()}
+        if 'embed_version' not in ne_cols:
+            conn.execute("ALTER TABLE node_embeddings ADD COLUMN embed_version TEXT")
+    # Ensure embed_failed_log table exists
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS embed_failed_log (
+            node_id TEXT NOT NULL,
+            attempted_at TEXT NOT NULL,
+            error_message TEXT,
+            attempt_no INTEGER DEFAULT 3,
+            PRIMARY KEY (node_id, attempted_at)
+        )
+    """)
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_embed_failed_node ON embed_failed_log(node_id)"
+    )
+    # Phase 3 T3.3: edges source tracking
+    edge_cols = {row[1] for row in conn.execute("PRAGMA table_info(edges)").fetchall()}
+    if 'source' not in edge_cols:
+        conn.execute("ALTER TABLE edges ADD COLUMN source TEXT DEFAULT 'manual'")
+    if 'confidence' not in edge_cols:
+        conn.execute("ALTER TABLE edges ADD COLUMN confidence REAL")
+    # Backfill: correct source for pre-T3.3 rows that got DEFAULT 'manual'
+    conn.execute(
+        "UPDATE edges SET source='semantic' WHERE auto_generated=1 AND source='manual'"
+    )
+    conn.execute(
+        "UPDATE edges SET source='regex' "
+        "WHERE relation IN ('refs_skill','refs_db','affects','cited_by_skill','imports') "
+        "AND source='manual'"
+    )
+    # Phase 4 T4.1: LLM edge proposal staging table
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS edge_proposals (
+            proposal_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            source_id TEXT NOT NULL,
+            target_id TEXT NOT NULL,
+            relation TEXT NOT NULL,
+            confidence REAL,
+            extractor TEXT NOT NULL,
+            reasoning TEXT,
+            status TEXT NOT NULL DEFAULT 'pending',
+            proposed_at TEXT NOT NULL,
+            reviewed_at TEXT,
+            reviewer TEXT,
+            UNIQUE (source_id, target_id, relation, extractor)
+        )
+    """)
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_edge_proposals_status ON edge_proposals(status)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_edge_proposals_source ON edge_proposals(source_id)"
+    )
+    conn.commit()
+
+
+def _ensure_fts_schema(conn):
+    """建立 FTS5 虛擬表 node_fts（trigram tokenizer，支援中文；fallback unicode61）。冪等。
+
+    Columns:
+        node_id  — stored UNINDEXED (not tokenised)
+        target   — tokenised
+        summary  — tokenised
+        full_text — tokenised (≤4000 chars)
+
+    Phase 3 T3.1.
+    """
+    existing = conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='node_fts'"
+    ).fetchone()
+    if existing:
+        return
+    try:
+        conn.execute("""
+            CREATE VIRTUAL TABLE node_fts USING fts5(
+                node_id UNINDEXED,
+                target,
+                summary,
+                full_text,
+                tokenize='trigram'
+            )
+        """)
+        conn.commit()
+    except Exception:
+        # Fallback: older SQLite builds may not have trigram tokenizer
+        conn.execute("""
+            CREATE VIRTUAL TABLE node_fts USING fts5(
+                node_id UNINDEXED,
+                target,
+                summary,
+                full_text,
+                tokenize='unicode61'
+            )
+        """)
+        conn.commit()
+
+
+def _rebuild_fts(conn):
+    """重建 FTS5 索引，只含 status='active' 的 nodes。sync 後呼叫。
+
+    Phase 3 T3.1.
+    """
+    _ensure_fts_schema(conn)
+    conn.execute("DELETE FROM node_fts")
+    conn.execute("""
+        INSERT INTO node_fts (node_id, target, summary, full_text)
+        SELECT id,
+               COALESCE(target, ''),
+               COALESCE(summary, ''),
+               COALESCE(full_text, '')
+        FROM nodes
+        WHERE status = 'active'
+    """)
+    conn.commit()
 
 
 def _ensure_snapshots_schema(conn):
@@ -383,9 +513,9 @@ def _process_edge_queue(conn, threshold: float = 0.85) -> tuple:
             sim = eu['cosine_similarity'](query_emb, other_emb)
             if sim >= threshold:
                 conn.execute(
-                    "INSERT OR IGNORE INTO edges (source_id, target_id, relation, auto_generated) "
-                    "VALUES (?, ?, 'references', 1)",
-                    (node_id, other_id)
+                    "INSERT OR IGNORE INTO edges (source_id, target_id, relation, auto_generated, source, confidence) "
+                    "VALUES (?, ?, 'references', 1, 'semantic', ?)",
+                    (node_id, other_id, float(sim))
                 )
                 auto_added += 1
                 skip_set.add(other_id)
@@ -895,8 +1025,8 @@ def cmd_add_decision(args):
     # Build edges for supersedes
     if args.supersedes:
         for sid in [s.strip() for s in args.supersedes.split(',')]:
-            conn.execute("INSERT OR IGNORE INTO edges (source_id, target_id, relation) VALUES (?, ?, 'supersedes')", (node_id, sid))
-            conn.execute("INSERT OR IGNORE INTO edges (source_id, target_id, relation) VALUES (?, ?, 'superseded_by')", (sid, node_id))
+            conn.execute("INSERT OR IGNORE INTO edges (source_id, target_id, relation, source) VALUES (?, ?, 'supersedes', 'manual')", (node_id, sid))
+            conn.execute("INSERT OR IGNORE INTO edges (source_id, target_id, relation, source) VALUES (?, ?, 'superseded_by', 'manual')", (sid, node_id))
             # Mark old as superseded
             conn.execute("UPDATE nodes SET status='superseded' WHERE id=?", (sid,))
 
@@ -958,7 +1088,7 @@ def cmd_add_learning(args):
 
     # Edges
     if args.related_decision:
-        conn.execute("INSERT OR IGNORE INTO edges (source_id, target_id, relation) VALUES (?, ?, 'references')", (node_id, args.related_decision))
+        conn.execute("INSERT OR IGNORE INTO edges (source_id, target_id, relation, source) VALUES (?, ?, 'references', 'manual')", (node_id, args.related_decision))
     conn.commit()
 
     _try_embed(conn, node_id, f"{args.title} {content_body[:300]}")
@@ -1001,8 +1131,8 @@ def cmd_update(args):
         params.append(args.status)
     if args.superseded_by:
         # Mark this entry as superseded by another
-        conn.execute("INSERT OR IGNORE INTO edges (source_id, target_id, relation) VALUES (?, ?, 'superseded_by')", (args.entry_id, args.superseded_by))
-        conn.execute("INSERT OR IGNORE INTO edges (source_id, target_id, relation) VALUES (?, ?, 'supersedes')", (args.superseded_by, args.entry_id))
+        conn.execute("INSERT OR IGNORE INTO edges (source_id, target_id, relation, source) VALUES (?, ?, 'superseded_by', 'manual')", (args.entry_id, args.superseded_by))
+        conn.execute("INSERT OR IGNORE INTO edges (source_id, target_id, relation, source) VALUES (?, ?, 'supersedes', 'manual')", (args.superseded_by, args.entry_id))
         if not args.status:
             updates.append("status = ?")
             params.append('superseded')
@@ -1340,7 +1470,7 @@ def cmd_build_edges(args):
             for s in skills:
                 s = s.strip()
                 if s:
-                    res = conn.execute("INSERT OR IGNORE INTO edges (source_id, target_id, relation) VALUES (?, ?, 'refs_skill')", (r['id'], f"SKILL:{s}"))
+                    res = conn.execute("INSERT OR IGNORE INTO edges (source_id, target_id, relation, source) VALUES (?, ?, 'refs_skill', 'regex')", (r['id'], f"SKILL:{s}"))
                     added += res.rowcount
         except (json.JSONDecodeError, TypeError):
             skipped += 1
@@ -1353,7 +1483,7 @@ def cmd_build_edges(args):
             for d in dbs:
                 d = d.strip()
                 if d:
-                    res = conn.execute("INSERT OR IGNORE INTO edges (source_id, target_id, relation) VALUES (?, ?, 'refs_db')", (r['id'], f"DB:{d}"))
+                    res = conn.execute("INSERT OR IGNORE INTO edges (source_id, target_id, relation, source) VALUES (?, ?, 'refs_db', 'regex')", (r['id'], f"DB:{d}"))
                     added += res.rowcount
         except (json.JSONDecodeError, TypeError):
             skipped += 1
@@ -1366,7 +1496,7 @@ def cmd_build_edges(args):
             for p in projects:
                 p = p.strip()
                 if p:
-                    res = conn.execute("INSERT OR IGNORE INTO edges (source_id, target_id, relation) VALUES (?, ?, 'affects')", (r['id'], f"PROJECT:{p}"))
+                    res = conn.execute("INSERT OR IGNORE INTO edges (source_id, target_id, relation, source) VALUES (?, ?, 'affects', 'regex')", (r['id'], f"PROJECT:{p}"))
                     added += res.rowcount
         except (json.JSONDecodeError, TypeError):
             skipped += 1
@@ -1388,7 +1518,7 @@ def cmd_build_edges(args):
                 for ref_num in refs:
                     did = f"D-{ref_num}"
                     if did in valid_ids:
-                        res = conn.execute("INSERT OR IGNORE INTO edges (source_id, target_id, relation) VALUES (?, ?, 'cited_by_skill')",
+                        res = conn.execute("INSERT OR IGNORE INTO edges (source_id, target_id, relation, source) VALUES (?, ?, 'cited_by_skill', 'regex')",
                                            (f"SKILL:{skill_name}", did))
                         added += res.rowcount
 
@@ -1496,8 +1626,8 @@ def cmd_add_edge(args):
         return
 
     conn.execute(
-        "INSERT OR REPLACE INTO edges (source_id, target_id, relation, auto_generated) "
-        "VALUES (?, ?, ?, 0)",
+        "INSERT OR REPLACE INTO edges (source_id, target_id, relation, auto_generated, source) "
+        "VALUES (?, ?, ?, 0, 'manual')",
         (args.source_id, args.target_id, args.relation)
     )
     conn.commit()
@@ -1902,8 +2032,8 @@ def cmd_tool_graph_scan(args):
             #   source_id = the tool being imported
             #   target_id = the script doing the import
             conn.execute(
-                """INSERT OR REPLACE INTO edges (source_id, target_id, relation, auto_generated)
-                   VALUES (?, ?, 'imports', 1)""",
+                """INSERT OR REPLACE INTO edges (source_id, target_id, relation, auto_generated, source)
+                   VALUES (?, ?, 'imports', 1, 'regex')""",
                 (target_id, importer_id)
             )
             edge_count += 1
@@ -2105,6 +2235,11 @@ def cmd_sync(args):
     kb = KBIndex()
     try:
         kb.sync(quiet=args.quiet)
+        # Phase 3 T3.1: rebuild FTS5 index after node sync
+        _rebuild_fts(kb.conn)
+        if not args.quiet:
+            fts_cnt = kb.conn.execute("SELECT COUNT(*) FROM node_fts").fetchone()[0]
+            print(f"node_fts rebuilt: {fts_cnt} rows")
         if getattr(args, 'embed', False) or getattr(args, 'embed_force', False):
             kb.sync_embeddings(force=args.embed_force, quiet=args.quiet)
     finally:
@@ -2481,6 +2616,138 @@ def cmd_check_conflict(args):
         kb.close()
 
 
+def cmd_embed_stats(args):
+    """Show embedding coverage and failure stats (Phase 1)."""
+    conn = _get_conn()
+    _ensure_schema(conn)
+    total = conn.execute("SELECT COUNT(*) FROM nodes WHERE status='active'").fetchone()[0]
+    embedded = conn.execute(
+        "SELECT COUNT(*) FROM node_embeddings ne JOIN nodes n ON ne.node_id=n.id WHERE n.status='active'"
+    ).fetchone()[0]
+    by_version = conn.execute(
+        "SELECT COALESCE(embed_version, 'unversioned'), COUNT(*) FROM nodes "
+        "WHERE status='active' GROUP BY embed_version ORDER BY COUNT(*) DESC"
+    ).fetchall()
+    try:
+        failed = conn.execute("SELECT COUNT(DISTINCT node_id) FROM embed_failed_log").fetchone()[0]
+    except Exception:
+        failed = 0
+    pct = embedded * 100 // max(total, 1)
+    print(f"Coverage: {embedded}/{total} ({pct}%)")
+    print(f"Failed nodes (logged): {failed}")
+    if by_version:
+        for v, c in by_version:
+            print(f"  {v}: {c}")
+    else:
+        print("  (no versioned embeddings yet — run sync --embed to backfill)")
+    conn.close()
+
+
+# ---------------------------------------------------------------------------
+# Phase 4 T4.2 — LLM-assisted edge extraction
+# ---------------------------------------------------------------------------
+
+def cmd_extract_edges(args):
+    """LLM-assisted edge extraction (Phase 4 T4.2)."""
+    import sys as _sys
+    _sys.path.insert(0, str(SCRIPT_DIR))
+    from edge_extractor import run as _run
+    n, p = _run(batch_size=args.batch_size, project=args.project, dry_run=args.dry_run)
+    print(f"Done: {n} nodes processed, {p} proposals written.")
+
+
+# ---------------------------------------------------------------------------
+# Phase 4 T4.3 — Review pending edge proposals
+# ---------------------------------------------------------------------------
+
+def cmd_review_edges(args):
+    """Review pending edge proposals (Phase 4 T4.3)."""
+    conn = _get_conn()
+    _ensure_schema(conn)
+
+    where_parts = ["status='pending'"]
+    params = []
+    if args.min_confidence is not None:
+        where_parts.append("confidence >= ?")
+        params.append(args.min_confidence)
+    if args.relation:
+        where_parts.append("relation = ?")
+        params.append(args.relation)
+
+    where_sql = " AND ".join(where_parts)
+    rows = conn.execute(
+        f"SELECT * FROM edge_proposals WHERE {where_sql} ORDER BY confidence DESC LIMIT ?",
+        (*params, args.limit)
+    ).fetchall()
+
+    if not rows:
+        print("No pending proposals match filter.")
+        conn.close()
+        return
+
+    accepted = rejected = skipped = 0
+
+    for r in rows:
+        src = conn.execute(
+            "SELECT target, summary FROM nodes WHERE id=?", (r['source_id'],)
+        ).fetchone()
+        tgt = conn.execute(
+            "SELECT target, summary FROM nodes WHERE id=?", (r['target_id'],)
+        ).fetchone()
+
+        print("─" * 70)
+        print(f"#{r['proposal_id']} conf={r['confidence']:.2f}  [{r['relation']}]  extractor={r['extractor']}")
+        print(f"  SRC {r['source_id']}: {(src['target'] if src else '?')[:60]}")
+        print(f"  TGT {r['target_id']}: {(tgt['target'] if tgt else '?')[:60]}")
+        print(f"  reasoning: {r['reasoning'] or '(none)'}")
+
+        now = datetime.now().isoformat()
+        if args.auto_approve_threshold is not None and r['confidence'] >= args.auto_approve_threshold:
+            choice = 'a'
+            print(f"  [auto-approve, conf>={args.auto_approve_threshold:.2f}]")
+        elif args.auto_approve_threshold is not None:
+            choice = 's'
+            print(f"  [auto-skip, conf<{args.auto_approve_threshold:.2f}]")
+        else:
+            try:
+                choice = input("  [a]ccept / [r]eject / [s]kip / [q]uit > ").strip().lower()
+            except EOFError:
+                choice = 's'
+
+        if choice == 'a':
+            conn.execute(
+                "INSERT OR REPLACE INTO edges "
+                "    (source_id, target_id, relation, source, confidence, auto_generated) "
+                "VALUES (?, ?, ?, ?, ?, 0)",
+                (r['source_id'], r['target_id'], r['relation'],
+                 r['extractor'], r['confidence'])
+            )
+            conn.execute(
+                "UPDATE edge_proposals SET status='approved', reviewed_at=?, reviewer='cli' "
+                "WHERE proposal_id=?",
+                (now, r['proposal_id'])
+            )
+            accepted += 1
+        elif choice == 'r':
+            conn.execute(
+                "UPDATE edge_proposals SET status='rejected', reviewed_at=?, reviewer='cli' "
+                "WHERE proposal_id=?",
+                (now, r['proposal_id'])
+            )
+            rejected += 1
+        elif choice == 'q':
+            print("Quit.")
+            conn.commit()
+            break
+        else:
+            skipped += 1
+
+        conn.commit()
+
+    conn.close()
+    print(f"\nDone: {accepted} approved, {rejected} rejected, {skipped} skipped.")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Knowledge Base CLI (EVO-012, EVO-016)")
     sub = parser.add_subparsers(dest='command')
@@ -2635,6 +2902,8 @@ def main():
 
     p_cc = sub.add_parser('check-conflict', help='L2 conflict check for a target (EVO-016)')
     p_cc.add_argument('target', type=str)
+
+    sub.add_parser('embed-stats', help='Show embedding coverage and failure stats')
     p_cc.add_argument('--threshold', type=float, default=0.4)
 
     # W1-2: project_state.md sidecar indexer
@@ -2643,6 +2912,20 @@ def main():
         help='Parse project_state.md and emit .project_state.json sidecar (W1-2).',
     )
     p_psi.add_argument('--project', type=str, required=True)
+
+    # Phase 4 T4.2: extract-edges
+    p_ee = sub.add_parser('extract-edges', help='LLM-assisted edge extraction (Phase 4)')
+    p_ee.add_argument('--batch-size', type=int, default=None)
+    p_ee.add_argument('--project', type=str, default=None)
+    p_ee.add_argument('--dry-run', action='store_true')
+
+    # Phase 4 T4.3: review-edges
+    p_re = sub.add_parser('review-edges', help='Review pending edge proposals (Phase 4)')
+    p_re.add_argument('--limit', type=int, default=20)
+    p_re.add_argument('--min-confidence', type=float, default=None)
+    p_re.add_argument('--relation', type=str, default=None)
+    p_re.add_argument('--auto-approve-threshold', type=float, default=None,
+                      help='Auto-approve proposals with confidence >= threshold')
 
     args = parser.parse_args()
     cmd_map = {
@@ -2670,6 +2953,10 @@ def main():
         'generate-index': cmd_generate_index,
         'check-conflict': cmd_check_conflict,
         'project-state-index': cmd_project_state_index,
+        'embed-stats': cmd_embed_stats,
+        # Phase 4
+        'extract-edges': cmd_extract_edges,
+        'review-edges': cmd_review_edges,
     }
     fn = cmd_map.get(args.command)
     if fn:

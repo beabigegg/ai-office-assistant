@@ -13,6 +13,7 @@ Usage:
     python kb_index.py impacts --project X / --skill X [--fmt line|ids|full]
 """
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -20,6 +21,8 @@ import sqlite3
 import sys
 from datetime import datetime
 from pathlib import Path
+
+EMBED_VERSION = 'v2-target-summary-fulltext500'
 
 # Embedding support (lazy import to avoid startup cost)
 _embedding_utils = None
@@ -178,6 +181,26 @@ _UPGRADE_HISTORY_TEMPLATE = """## 升級歷程摘要
 | 2026-02-25 | v3.1 架構升級: triggers 自動路由 + 記憶自動化 | 系統改進 |
 | 2026-03-04 | 新建 excel-operations, word-operations, sqlite-operations | 3 Skills |"""
 
+import time as _time
+
+
+def _embed_with_retry(eu, text, max_retries=3):
+    """Call eu['get_embedding'] with exponential backoff retry.
+
+    Returns:
+        (vector, None) on success
+        (None, error_str) after max_retries failures
+    """
+    last_err = None
+    for attempt in range(1, max_retries + 1):
+        try:
+            return eu['get_embedding'](text), None
+        except Exception as e:
+            last_err = str(e)
+            if attempt < max_retries:
+                _time.sleep(2 ** attempt)
+    return None, last_err
+
 
 class KBIndex:
     def __init__(self, db_path=None, kb_root=None):
@@ -210,9 +233,66 @@ class KBIndex:
                     source_mtime REAL, nodes_synced INTEGER DEFAULT 0
                 );
             """)
+        self._ensure_phase1_cols(self.conn)
+
+    def _ensure_phase1_cols(self, conn):
+        """Idempotent migration: add Phase 1 extension columns to nodes and node_embeddings."""
+        cols = {row[1] for row in conn.execute("PRAGMA table_info(nodes)").fetchall()}
+        for col, typ in [('full_text', 'TEXT'), ('confidence', 'TEXT'),
+                         ('embed_version', 'TEXT'), ('subtype', 'TEXT'), ('legacy_id', 'TEXT')]:
+            if col not in cols:
+                conn.execute(f"ALTER TABLE nodes ADD COLUMN {col} {typ}")
+        # Also ensure node_embeddings has embed_version (table may not exist yet — guard with check)
+        ne_exists = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='node_embeddings'"
+        ).fetchone()
+        if ne_exists:
+            ne_cols = {row[1] for row in conn.execute("PRAGMA table_info(node_embeddings)").fetchall()}
+            if 'embed_version' not in ne_cols:
+                conn.execute("ALTER TABLE node_embeddings ADD COLUMN embed_version TEXT")
+        # Ensure embed_failed_log exists (idempotent — also in schema SQL, guard for inline-schema path)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS embed_failed_log (
+                node_id TEXT NOT NULL,
+                attempted_at TEXT NOT NULL,
+                error_message TEXT,
+                attempt_no INTEGER DEFAULT 3,
+                PRIMARY KEY (node_id, attempted_at)
+            )
+        """)
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_embed_failed_node ON embed_failed_log(node_id)"
+        )
+        # Phase 3 T3.3: edges source tracking
+        edge_cols = {row[1] for row in conn.execute("PRAGMA table_info(edges)").fetchall()}
+        if 'source' not in edge_cols:
+            conn.execute("ALTER TABLE edges ADD COLUMN source TEXT DEFAULT 'manual'")
+        if 'confidence' not in edge_cols:
+            conn.execute("ALTER TABLE edges ADD COLUMN confidence REAL")
+        # Backfill: correct source for pre-T3.3 rows that got DEFAULT 'manual'
+        conn.execute(
+            "UPDATE edges SET source='semantic' WHERE auto_generated=1 AND source='manual'"
+        )
+        conn.execute(
+            "UPDATE edges SET source='regex' "
+            "WHERE relation IN ('refs_skill','refs_db','affects','cited_by_skill','imports') "
+            "AND source='manual'"
+        )
+        conn.commit()
 
     def close(self):
         self.conn.close()
+
+    @property
+    def _learning_legacy_map(self):
+        """Lazy-load learning ID legacy mapping (old ECR-LXX → new LRN-HHHHHHHH)."""
+        if not hasattr(self, '_learning_legacy_map_cache'):
+            map_path = KG_DIR / 'learning_id_legacy_map.json'
+            if map_path.exists():
+                self._learning_legacy_map_cache = json.loads(map_path.read_text(encoding='utf-8'))
+            else:
+                self._learning_legacy_map_cache = {}
+        return self._learning_legacy_map_cache
 
     def _has_semantic_overlap_suppress_edge(self, left_id: str, right_id: str) -> bool:
         row = self.conn.execute(
@@ -259,29 +339,34 @@ class KBIndex:
             for n in nodes:
                 self.conn.execute("""
                     INSERT INTO nodes (id, node_type, project, status, target, summary,
-                                       refs_skill, refs_db, affects_project, created_date, last_synced)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                       refs_skill, refs_db, affects_project, created_date, last_synced,
+                                       full_text, confidence, subtype, legacy_id)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT(id) DO UPDATE SET
                         node_type=excluded.node_type, project=excluded.project,
                         status=excluded.status, target=excluded.target, summary=excluded.summary,
                         refs_skill=excluded.refs_skill, refs_db=excluded.refs_db,
                         affects_project=excluded.affects_project, created_date=excluded.created_date,
-                        last_synced=excluded.last_synced
+                        last_synced=excluded.last_synced,
+                        full_text=excluded.full_text, confidence=excluded.confidence,
+                        subtype=excluded.subtype, legacy_id=excluded.legacy_id
                 """, (
                     n['id'], n['node_type'], n.get('project'), n.get('status', 'active'),
                     n.get('target'), n.get('summary'),
                     json.dumps(n['refs_skill']) if n.get('refs_skill') else None,
                     json.dumps(n['refs_db']) if n.get('refs_db') else None,
                     json.dumps(n['affects_project']) if n.get('affects_project') else None,
-                    n.get('created_date'), now
+                    n.get('created_date'), now,
+                    n.get('full_text'), n.get('confidence'), n.get('subtype'),
+                    n.get('legacy_id')
                 ))
 
             # Upsert edges
             for e in edges:
                 self.conn.execute("""
-                    INSERT OR IGNORE INTO edges (source_id, target_id, relation)
-                    VALUES (?, ?, ?)
-                """, (e['source'], e['target'], e['relation']))
+                    INSERT OR IGNORE INTO edges (source_id, target_id, relation, source)
+                    VALUES (?, ?, ?, ?)
+                """, (e['source'], e['target'], e['relation'], e.get('edge_source', 'regex')))
 
             # Update sync log
             self.conn.execute("""
@@ -296,6 +381,35 @@ class KBIndex:
             total_edges += len(edges)
 
         self.conn.commit()
+
+        # T2.3: Sync skill nodes from .claude/skills-on-demand/
+        skill_nodes, skill_edges = self._parse_skills()
+        now = datetime.now().isoformat()
+        for n in skill_nodes:
+            self.conn.execute("""
+                INSERT INTO nodes (id, node_type, project, status, target, summary,
+                                   refs_skill, refs_db, affects_project, created_date, last_synced,
+                                   full_text, confidence, subtype, legacy_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                    node_type=excluded.node_type, status=excluded.status,
+                    target=excluded.target, summary=excluded.summary,
+                    full_text=excluded.full_text, confidence=excluded.confidence,
+                    subtype=excluded.subtype, last_synced=excluded.last_synced
+            """, (
+                n['id'], n['node_type'], n.get('project'), n.get('status', 'active'),
+                n.get('target'), n.get('summary'),
+                None, None, None, n.get('created_date'), now,
+                n.get('full_text'), n.get('confidence'), n.get('subtype'), n.get('legacy_id')
+            ))
+        for e in skill_edges:
+            self.conn.execute(
+                "INSERT OR IGNORE INTO edges (source_id, target_id, relation, source) VALUES (?, ?, ?, ?)",
+                (e['source'], e['target'], e['relation'], e.get('edge_source', 'regex'))
+            )
+        self.conn.commit()
+        total_nodes += len(skill_nodes)
+        total_edges += len(skill_edges)
 
         # M1: Auto-supersede — update .md source of truth
         if auto_supersede:
@@ -360,17 +474,21 @@ class KBIndex:
             for n in nodes:
                 self.conn.execute("""
                     INSERT INTO nodes (id, node_type, project, status, target, summary,
-                                       refs_skill, refs_db, affects_project, created_date, last_synced)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                       refs_skill, refs_db, affects_project, created_date, last_synced,
+                                       full_text, confidence, subtype)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT(id) DO UPDATE SET
-                        status=excluded.status, last_synced=excluded.last_synced
+                        status=excluded.status, last_synced=excluded.last_synced,
+                        full_text=excluded.full_text, confidence=excluded.confidence,
+                        subtype=excluded.subtype
                 """, (
                     n['id'], n['node_type'], n.get('project'), n.get('status', 'active'),
                     n.get('target'), n.get('summary'),
                     json.dumps(n['refs_skill']) if n.get('refs_skill') else None,
                     json.dumps(n['refs_db']) if n.get('refs_db') else None,
                     json.dumps(n['affects_project']) if n.get('affects_project') else None,
-                    n.get('created_date'), now
+                    n.get('created_date'), now,
+                    n.get('full_text'), n.get('confidence'), n.get('subtype')
                 ))
             self.conn.commit()
 
@@ -470,8 +588,34 @@ class KBIndex:
                 'refs_db': refs_db if refs_db else None,
                 'affects_project': affects if affects else None,
                 'created_date': date,
+                'full_text': block.strip()[:4000],
+                'confidence': meta.get('confidence') or meta.get('ctx_confidence'),
+                'subtype': meta.get('subtype') or meta.get('domain'),
             }
+
+            # Parse <!-- kb-context: ... --> for confidence/subtype fallback
+            ctx_match = re.search(r'<!--\s*kb-context:\s*(.+?)\s*-->', block)
+            if ctx_match:
+                ctx = self._parse_meta(ctx_match.group(1))
+                if not node.get('confidence') and ctx.get('confidence'):
+                    node['confidence'] = ctx['confidence']
+                if not node.get('subtype') and ctx.get('domain'):
+                    node['subtype'] = ctx['domain']
+
             nodes.append(node)
+
+            # T2.4: Parse <!-- kb-edges: refines=D-NNN, contradicts=D-NNN --> explicit relations
+            edges_match = re.search(r'<!--\s*kb-edges:\s*(.+?)\s*-->', block)
+            if edges_match:
+                edges_meta = self._parse_meta(edges_match.group(1))
+                for rel in ('refines', 'contradicts', 'extends', 'depends_on'):
+                    targets = edges_meta.get(rel)
+                    if targets:
+                        if isinstance(targets, str):
+                            targets = [t.strip() for t in targets.split(',') if t.strip()]
+                        for t in targets:
+                            if t and t != node_id:
+                                edges.append({'source': node_id, 'target': t, 'relation': rel})
 
             # Build edges from supersedes
             supersedes_list = meta.get('supersedes', [])
@@ -515,6 +659,12 @@ class KBIndex:
             for rule_id in set(rule_refs):
                 edges.append({'source': node_id, 'target': rule_id, 'relation': 'references'})
 
+            # References to learning nodes (ECR-LXX → resolve via legacy map to LRN-*)
+            ecr_l_refs = re.findall(r'(ECR-L\d+)', block)
+            for old_lid in set(ecr_l_refs):
+                new_lid = self._learning_legacy_map.get(old_lid, old_lid)
+                edges.append({'source': node_id, 'target': new_lid, 'relation': 'references'})
+
         return nodes, edges
 
     def _parse_rules(self, path):
@@ -550,6 +700,9 @@ class KBIndex:
                 'refs_db': None,
                 'affects_project': None,
                 'created_date': None,
+                'full_text': block.strip()[:4000],
+                'confidence': confidence,
+                'subtype': None,
             }
             nodes.append(node)
 
@@ -636,7 +789,10 @@ class KBIndex:
                 # Still active but flagged — keep active, add to summary
                 pass
 
-            node_id = f"ECR-L{idx:02d}"
+            legacy_id = f"ECR-L{idx:02d}"
+            _raw = f"{date or ''}|{title}"
+            _hash8 = hashlib.sha1(_raw.encode('utf-8')).hexdigest()[:8].upper()
+            node_id = f"LRN-{_hash8}"
             node = {
                 'id': node_id,
                 'node_type': 'learning',
@@ -648,6 +804,10 @@ class KBIndex:
                 'refs_db': None,
                 'affects_project': None,
                 'created_date': date,
+                'full_text': block.strip()[:4000],
+                'confidence': None,
+                'subtype': None,
+                'legacy_id': legacy_id,
             }
             nodes.append(node)
 
@@ -655,6 +815,88 @@ class KBIndex:
             d_refs = re.findall(r'(D-\d+)', block)
             for d_id in set(d_refs):
                 edges.append({'source': node_id, 'target': d_id, 'relation': 'references'})
+
+        return nodes, edges
+
+    def _parse_skills(self):
+        """Parse .claude/skills-on-demand/*/SKILL.md into skill nodes.
+
+        Each skill directory becomes a SKILL-{name} node with node_type='skill'.
+        D-NNN references found in SKILL.md body generate cited_by_skill edges.
+        """
+        skills_root = ROOT / '.claude' / 'skills-on-demand'
+        nodes = []
+        edges = []
+        if not skills_root.exists():
+            # Also try .claude/skills
+            skills_root = ROOT / '.claude' / 'skills'
+            if not skills_root.exists():
+                return nodes, edges
+
+        try:
+            import yaml as _yaml
+            has_yaml = True
+        except ImportError:
+            has_yaml = False
+
+        for skill_dir in sorted(skills_root.iterdir()):
+            if not skill_dir.is_dir():
+                continue
+            if skill_dir.name.startswith('_') or skill_dir.name.startswith('.'):
+                continue
+            name = skill_dir.name
+            node_id = f"SKILL-{name}"
+
+            summary = ''
+            confidence = None
+            subtype = None
+            full_text = ''
+
+            yaml_path = skill_dir / '.skill.yaml'
+            if yaml_path.exists() and has_yaml:
+                try:
+                    y = _yaml.safe_load(yaml_path.read_text(encoding='utf-8')) or {}
+                    summary = (y.get('description') or '')[:120]
+                    confidence = y.get('confidence')
+                    subtype = y.get('category')
+                except Exception:
+                    pass
+
+            skill_md = skill_dir / 'SKILL.md'
+            if skill_md.exists():
+                try:
+                    full_text = skill_md.read_text(encoding='utf-8')[:4000]
+                    if not summary:
+                        # Extract first non-empty non-header line as summary
+                        for line in full_text.splitlines():
+                            line = line.strip()
+                            if line and not line.startswith('#') and not line.startswith('---'):
+                                summary = line[:120]
+                                break
+                except Exception:
+                    pass
+
+            nodes.append({
+                'id': node_id,
+                'node_type': 'skill',
+                'project': 'shared',
+                'status': 'active',
+                'target': name,
+                'summary': summary,
+                'full_text': full_text,
+                'confidence': confidence,
+                'subtype': subtype,
+                'legacy_id': None,
+                'created_date': None,
+            })
+
+            # cited_by_skill edges: D-NNN mentioned in SKILL.md body
+            for d_num in set(re.findall(r'\bD-(\d{3})\b', full_text)):
+                edges.append({
+                    'source': node_id,
+                    'target': f"D-{d_num}",
+                    'relation': 'cited_by_skill',
+                })
 
         return nodes, edges
 
@@ -699,7 +941,7 @@ class KBIndex:
                 print("WARN: Ollama service not available, skipping embedding sync")
             return 0, 0, 0
 
-        # Ensure table exists
+        # Ensure node_embeddings table exists with embed_version column
         self.conn.execute("""
             CREATE TABLE IF NOT EXISTS node_embeddings (
                 node_id TEXT PRIMARY KEY,
@@ -710,10 +952,24 @@ class KBIndex:
                 FOREIGN KEY (node_id) REFERENCES nodes(id)
             )
         """)
+        emb_cols = {row[1] for row in self.conn.execute("PRAGMA table_info(node_embeddings)").fetchall()}
+        if 'embed_version' not in emb_cols:
+            self.conn.execute("ALTER TABLE node_embeddings ADD COLUMN embed_version TEXT")
 
-        # Get all active nodes
+        # Ensure embed_failed_log table exists
+        self.conn.execute("""
+            CREATE TABLE IF NOT EXISTS embed_failed_log (
+                node_id TEXT NOT NULL,
+                attempted_at TEXT NOT NULL,
+                error_message TEXT,
+                attempt_no INTEGER DEFAULT 3,
+                PRIMARY KEY (node_id, attempted_at)
+            )
+        """)
+
+        # Get all active nodes (including full_text for richer embed_text)
         nodes = self.conn.execute(
-            "SELECT id, target, summary FROM nodes WHERE status='active'"
+            "SELECT id, target, summary, full_text FROM nodes WHERE status='active'"
         ).fetchall()
 
         embedded = 0
@@ -723,50 +979,59 @@ class KBIndex:
 
         for n in nodes:
             node_id = n['id']
-            # Build embed text from target + summary
+            # Build embed text from target + summary + full_text[:500]
             parts = []
             if n['target']:
                 parts.append(n['target'])
             if n['summary']:
                 parts.append(n['summary'])
+            if n['full_text']:
+                parts.append(n['full_text'][:500])
             embed_text = ' | '.join(parts)
             if not embed_text.strip():
                 skipped += 1
                 continue
 
-            # Check if already embedded (unless force)
+            # Check if already embedded with same text + version (unless force)
             if not force:
                 existing = self.conn.execute(
-                    "SELECT embed_text, embed_model FROM node_embeddings WHERE node_id=?",
+                    "SELECT embed_text, embed_model, embed_version FROM node_embeddings WHERE node_id=?",
                     (node_id,)
                 ).fetchone()
-                if existing and existing['embed_text'] == embed_text and existing['embed_model'] == model_name:
+                if existing and existing['embed_text'] == embed_text \
+                   and existing['embed_model'] == model_name \
+                   and existing['embed_version'] == EMBED_VERSION:
                     skipped += 1
                     continue
 
-            # Get embedding
-            try:
-                vec = eu['get_embedding'](embed_text)
-                blob = eu['embedding_to_blob'](vec)
-                now = datetime.now().isoformat()
-                self.conn.execute("""
-                    INSERT INTO node_embeddings (node_id, embedding, embed_text, embed_model, updated_at)
-                    VALUES (?, ?, ?, ?, ?)
-                    ON CONFLICT(node_id) DO UPDATE SET
-                        embedding=excluded.embedding, embed_text=excluded.embed_text,
-                        embed_model=excluded.embed_model, updated_at=excluded.updated_at
-                """, (node_id, blob, embed_text, model_name, now))
-                embedded += 1
-                if not quiet and embedded % 20 == 0:
-                    print(f"  embedded {embedded} nodes...", file=sys.stderr)
-            except (ConnectionError, RuntimeError) as e:
+            # Get embedding with retry
+            vec, err = _embed_with_retry(eu, embed_text)
+            if vec is None:
                 errors += 1
+                self.conn.execute(
+                    "INSERT OR REPLACE INTO embed_failed_log (node_id, attempted_at, error_message, attempt_no) VALUES (?, ?, ?, ?)",
+                    (node_id, datetime.now().isoformat(), err, 3)
+                )
                 if not quiet and errors <= 3:
-                    print(f"  WARN: failed to embed {node_id}: {e}", file=sys.stderr)
-                if errors >= 5:
-                    if not quiet:
-                        print(f"  Too many errors ({errors}), stopping embedding sync", file=sys.stderr)
-                    break
+                    print(f"  WARN: failed to embed {node_id} after 3 retries: {err}", file=sys.stderr)
+                continue
+
+            blob = eu['embedding_to_blob'](vec)
+            now = datetime.now().isoformat()
+            self.conn.execute("""
+                INSERT INTO node_embeddings (node_id, embedding, embed_text, embed_model, updated_at, embed_version)
+                VALUES (?, ?, ?, ?, ?, ?)
+                ON CONFLICT(node_id) DO UPDATE SET
+                    embedding=excluded.embedding, embed_text=excluded.embed_text,
+                    embed_model=excluded.embed_model, updated_at=excluded.updated_at,
+                    embed_version=excluded.embed_version
+            """, (node_id, blob, embed_text, model_name, now, EMBED_VERSION))
+            self.conn.execute(
+                "UPDATE nodes SET embed_version=? WHERE id=?", (EMBED_VERSION, node_id)
+            )
+            embedded += 1
+            if not quiet and embedded % 20 == 0:
+                print(f"  embedded {embedded} nodes...", file=sys.stderr)
 
         self.conn.commit()
 
@@ -781,69 +1046,130 @@ class KBIndex:
             print(f"embedding sync: {embedded} embedded, {skipped} skipped, {errors} errors")
         return embedded, skipped, errors
 
+    def _bm25_search(self, query_text: str, top_k: int = 30) -> list:
+        """BM25 keyword search via SQLite FTS5 node_fts virtual table.
+
+        Phase 3 T3.2.
+
+        Returns:
+            list of (node_id, rank) sorted by rank ascending (lower / more negative = better).
+            Returns [] if FTS table absent, empty query, or any error.
+        """
+        # Strip quote chars that would break FTS5 MATCH syntax in trigram mode
+        safe_query = query_text.replace('"', '').replace("'", "").strip()
+        if not safe_query:
+            return []
+        try:
+            rows = self.conn.execute("""
+                SELECT node_id, bm25(node_fts) AS rank
+                FROM node_fts
+                WHERE node_fts MATCH ?
+                ORDER BY rank
+                LIMIT ?
+            """, (safe_query, top_k)).fetchall()
+            return [(r[0], r[1]) for r in rows]
+        except Exception:
+            # FTS table not yet built or MATCH syntax error — degrade gracefully
+            return []
+
     def related_semantic(self, query_text, top_k=10, threshold=0.3, fmt='line'):
-        """Semantic search across all embedded nodes using cosine similarity.
+        """Hybrid semantic search: Dense cosine + BM25 fused via Reciprocal Rank Fusion (RRF).
+
+        Phase 3 T3.2.
+
+        When Ollama is unavailable, falls back to BM25-only RRF.
+        When FTS table is also absent, falls back to LIKE-based related().
 
         Args:
             query_text: Natural language query
             top_k: Max results to return
-            threshold: Minimum cosine similarity
+            threshold: Minimum cosine similarity for dense candidates
             fmt: Output format (line/ids/full)
 
         Returns:
-            Formatted results string, or falls back to LIKE-based related()
+            Formatted results string.
         """
         eu = _get_embedding_utils()
-        if not eu or not eu['is_ollama_available']():
-            # Fallback to keyword matching
-            return self.related(target=query_text, fmt=fmt) + "\n(fallback: keyword match, Ollama unavailable)"
 
-        # Check if embeddings exist
-        count = self.conn.execute("SELECT COUNT(*) as c FROM node_embeddings").fetchone()
-        if not count or count['c'] == 0:
-            return self.related(target=query_text, fmt=fmt) + "\n(fallback: keyword match, no embeddings)"
+        # ── BM25 leg (always attempt — does not require Ollama) ──
+        bm25_results = self._bm25_search(query_text, top_k=top_k * 3)
+        bm25_rank = {nid: i + 1 for i, (nid, _) in enumerate(bm25_results)}
 
-        try:
-            query_vec = eu['get_embedding'](query_text)
-        except (ConnectionError, RuntimeError):
-            return self.related(target=query_text, fmt=fmt) + "\n(fallback: keyword match, embedding failed)"
+        # ── Dense leg (needs Ollama + embeddings) ──
+        dense_rank = {}
+        if eu and eu.get('is_ollama_available') and eu['is_ollama_available']():
+            emb_count = self.conn.execute("SELECT COUNT(*) FROM node_embeddings").fetchone()
+            if emb_count and emb_count[0] > 0:
+                try:
+                    query_vec = eu['get_embedding'](query_text)
+                    emb_rows = self.conn.execute("""
+                        SELECT ne.node_id, ne.embedding
+                        FROM node_embeddings ne
+                        JOIN nodes n ON ne.node_id = n.id
+                        WHERE n.status = 'active'
+                    """).fetchall()
+                    scored = []
+                    for row in emb_rows:
+                        nid = row['node_id'] if hasattr(row, 'keys') else row[0]
+                        emb_blob = row['embedding'] if hasattr(row, 'keys') else row[1]
+                        sim = eu['cosine_similarity'](query_vec, eu['blob_to_embedding'](emb_blob))
+                        if sim >= threshold:
+                            scored.append((nid, sim))
+                    scored.sort(key=lambda x: -x[1])
+                    dense_rank = {nid: i + 1 for i, (nid, _) in enumerate(scored[:top_k * 3])}
+                except Exception:
+                    pass  # dense unavailable — BM25-only RRF
 
-        # Load all embeddings and compute similarity
-        rows = self.conn.execute("""
-            SELECT ne.node_id, ne.embedding, n.*
-            FROM node_embeddings ne
-            JOIN nodes n ON ne.node_id = n.id
-            WHERE n.status = 'active'
-        """).fetchall()
+        # ── RRF fusion (k=60 standard constant) ──
+        k = 60
+        rrf_scores: dict = {}
+        for nid, r in dense_rank.items():
+            rrf_scores[nid] = rrf_scores.get(nid, 0.0) + 1.0 / (k + r)
+        for nid, r in bm25_rank.items():
+            rrf_scores[nid] = rrf_scores.get(nid, 0.0) + 1.0 / (k + r)
 
-        scored = []
-        for row in rows:
-            vec = eu['blob_to_embedding'](row['embedding'])
-            sim = eu['cosine_similarity'](query_vec, vec)
-            if sim >= threshold:
-                scored.append((sim, row))
+        if not rrf_scores:
+            # Total fallback: LIKE-based keyword search
+            return self.related(target=query_text, fmt=fmt) + "\n(fallback: keyword match)"
 
-        scored.sort(key=lambda x: x[0], reverse=True)
-        scored = scored[:top_k]
+        fused = sorted(rrf_scores.items(), key=lambda x: -x[1])[:top_k]
 
-        if not scored:
-            return f"No semantic matches for '{query_text}' (threshold={threshold})"
-
+        # ── Fetch node details and format ──
         lines = []
-        for sim, row in scored:
+        for nid, score in fused:
+            row = self.conn.execute(
+                "SELECT id, status, node_type, project, target, summary, refs_skill FROM nodes WHERE id=?",
+                (nid,)
+            ).fetchone()
+            if not row:
+                continue
+            node_id = row['id'] if hasattr(row, 'keys') else row[0]
+            node_status = (row['status'] if hasattr(row, 'keys') else row[1]) or ''
+            node_project = (row['project'] if hasattr(row, 'keys') else row[3]) or ''
+            node_target = (row['target'] if hasattr(row, 'keys') else row[4]) or ''
+            node_summary = (row['summary'] if hasattr(row, 'keys') else row[5]) or ''
+            node_refs = (row['refs_skill'] if hasattr(row, 'keys') else row[6]) or ''
+
             if fmt == 'ids':
-                lines.append(row['id'])
+                lines.append(node_id)
             elif fmt == 'full':
-                lines.append(f"{row['id']} | sim={sim:.3f} | {row['status']} | {row['project']} | {row['target']}")
-                lines.append(f"  summary: {row['summary']}")
-                if row['refs_skill']:
-                    lines.append(f"  refs_skill: {row['refs_skill']}")
+                lines.append(
+                    f"{node_id} | rrf={score:.4f} | {node_status} | {node_project} | {node_target}"
+                )
+                lines.append(f"  summary: {node_summary}")
+                if node_refs:
+                    lines.append(f"  refs_skill: {node_refs}")
             else:  # line
-                lines.append(f"{row['id']} | sim={sim:.3f} | {row['target'][:50] if row['target'] else ''} | {row['summary'][:60] if row['summary'] else ''}")
+                dense_s = f"d={1.0/(k+dense_rank[nid]):.4f}" if nid in dense_rank else "d=none"
+                bm25_s = f"b={1.0/(k+bm25_rank[nid]):.4f}" if nid in bm25_rank else "b=none"
+                lines.append(
+                    f"{node_id} | rrf={score:.4f} [{dense_s},{bm25_s}] | "
+                    f"{node_target[:45]} | {node_summary[:55]}"
+                )
 
         if fmt == 'ids':
             return ','.join(lines)
-        return '\n'.join(lines)
+        return '\n'.join(lines) if lines else f"No results for '{query_text}'"
 
     # ── Queries ───────────────────────────────────────────────────────
 

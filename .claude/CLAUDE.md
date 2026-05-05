@@ -106,4 +106,14 @@ shared/kb/{dynamic,external,memory}/    ← 匯出品 / 外部標準摘要 / 會
 | `/evolve` | 架構審查（委派 architect） |
 | `/commit` | Git commit 當前變更 |
 
+### KB 維護指令（手動觸發）
+
+| 指令 | 時機 | 說明 |
+|------|------|------|
+| `kb.py embed-stats` | 懷疑搜尋漏找時 | 查看 embedding 覆蓋率（目標 >90%）；coverage < 80% → 跑 sync |
+| `kb.py sync` | embed-stats 顯示 unversioned 大量時 | 重建 FTS5 + 為缺少 embedding 的節點生成向量 |
+| `kb.py extract-edges --batch-size 50 --dry-run` | knowledge_lifecycle 執行後，或每週一次 | 預覽 gpt-oss 將分析哪些節點的關係 |
+| `kb.py extract-edges --batch-size 50` | dry-run 確認無誤後 | 正式啟動 LLM 關係抽取（~3s/節點，整庫需數小時） |
+| `kb.py review-edges` | extract-edges 完成後 | 互動審核 edge_proposals；`--auto-approve-threshold 0.9` 可快速批准高信心候選 |
+
 工具語法查 `--help`：`kb.py -h`、`backlog.py -h`、`db_schema.py -h`、`coordinator.py -h`。

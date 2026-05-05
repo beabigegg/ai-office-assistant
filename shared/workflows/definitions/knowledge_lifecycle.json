@@ -27,7 +27,7 @@
     {
       "id": "sync_knowledge_index",
       "description": "Sync dynamic KB changes to kb_index.db and refresh markdown exports after writing",
-      "instruction": "Run: bash shared/tools/conda-python.sh shared/tools/kb.py build-edges, then bash shared/tools/conda-python.sh shared/tools/kb.py export all. This keeps both graph edges and .md exports current after new nodes are added. Complete with `{\"index_synced\":true,\"exports_refreshed\":true}`.",
+      "instruction": "Run in sequence: (1) bash shared/tools/conda-python.sh shared/tools/kb.py build-edges  (2) bash shared/tools/conda-python.sh shared/tools/kb.py export all  (3) bash shared/tools/conda-python.sh shared/tools/kb.py sync  — step 3 rebuilds FTS5 index and generates embeddings for any new nodes (version-tracked, only re-embeds nodes missing current embed_version). Complete with `{\"index_synced\":true,\"exports_refreshed\":true}`.",
       "depends_on": ["write_to_dynamic"],
       "required": true,
       "required_outputs": [
@@ -50,10 +50,22 @@
       "validator_params": {}
     },
     {
+      "id": "extract_edge_proposals",
+      "description": "（選用）當本輪新增節點 ≥ 3 個時，啟動 gpt-oss LLM 關係抽取，將候選邊寫入 edge_proposals staging table，待人工 review-edges 審核後才升至 edges。",
+      "instruction": "僅在 `kb_entry_ids` 含 ≥ 3 個 entry 時執行。先 dry-run 確認批次大小：bash shared/tools/conda-python.sh shared/tools/kb.py extract-edges --batch-size 20 --dry-run。如無異常，正式執行（去掉 --dry-run）。完成後以 `{\"edge_proposals_queued\": <int>}` complete，0 亦可。不需執行時直接 complete `{\"edge_proposals_queued\": 0, \"skipped\": true}`。注意：gpt-oss 呼叫必須序列＋3 秒延遲，禁止並發。",
+      "depends_on": ["sync_knowledge_index"],
+      "required": false,
+      "required_outputs": [
+        {"output_key": "edge_proposals_queued", "description": "本輪排入 edge_proposals 的候選邊數量"}
+      ],
+      "validator": null,
+      "validator_params": {}
+    },
+    {
       "id": "check_promote_threshold",
       "description": "Check if dynamic KB has enough validated entries to suggest /promote",
       "instruction": "Count active learning entries whose meta_json confidence is `high`. Complete with `{\"active_high_count\": <int>, \"suggest_run_promote\": <bool>, \"reason\": \"<brief>\"}` where `suggest_run_promote` is true iff `active_high_count >= 5`.",
-      "depends_on": ["sync_indexing_reminders"],
+      "depends_on": ["sync_indexing_reminders", "extract_edge_proposals"],
       "required": true,
       "required_outputs": [
         {"output_key": "active_high_count", "description": "active high-confidence learning count"},
